@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -33,14 +33,14 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
+import { useBillingRates } from '../billing/BillingRateManager';
+import { useTimeTracking } from '../../contexts/TimeTrackingContext';
 
 const ManualTimeEntry = ({ 
   clients = [], 
   matters = [], 
-  timeEntries = [], 
-  setTimeEntries,
   practiceAreas = [],
-  activityTypes = []
+  activityTypes = [],
 }) => {
   const [open, setOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -52,10 +52,16 @@ const ManualTimeEntry = ({
   const [billableType, setBillableType] = useState('billable');
   const [selectedPracticeArea, setSelectedPracticeArea] = useState(null);
   const [selectedActivityType, setSelectedActivityType] = useState(null);
+  const [hourlyRate, setHourlyRate] = useState(0);
+  const [rateOverridden, setRateOverridden] = useState(false);
+  const [rateConfirmOpen, setRateConfirmOpen] = useState(false);
+  const [pendingRateChange, setPendingRateChange] = useState(null);
   const [bulkEditMode, setBulkEditMode] = useState(false);
   const [selectedEntries, setSelectedEntries] = useState([]);
   const [bulkEditField, setBulkEditField] = useState('');
   const [bulkEditValue, setBulkEditValue] = useState('');
+  const { lookupRate } = useBillingRates();
+  const { timeEntries, addTimeEntry, deleteTimeEntry } = useTimeTracking();
 
   // Example clients data if not provided
   const defaultClients = clients.length > 0 ? clients : [
@@ -126,65 +132,199 @@ const ManualTimeEntry = ({
     return Math.round(diffHours * 10) / 10;
   };
 
-  const handleSave = () => {
-    if (!selectedClient || !selectedMatter || !description) return;
+  // Function to fetch billing rate based on client, matter, practice area and activity type
+  const fetchBillingRate = () => {
+    if (!selectedClient) return;
     
-    const duration = calculateDuration();
-    
-    if (duration <= 0) {
-      alert('End time must be after start time');
-      return;
-    }
-    
-    const newEntry = {
-      id: Date.now(),
-      date: selectedDate,
-      startTime: startTime,
-      endTime: endTime,
-      duration: duration,
-      description,
-      client: selectedClient.name,
-      clientId: selectedClient.id,
-      matter: selectedMatter.name,
-      matterId: selectedMatter.id,
-      caseNumber: selectedMatter.caseNumber,
-      billableType,
-      practiceArea: selectedPracticeArea?.name || '',
-      activityType: selectedActivityType?.name || '',
-      status: 'unbilled',
+    const options = {
+      clientId: selectedClient?.id,
+      matterId: selectedMatter?.id,
+      practiceAreaId: selectedPracticeArea?.id,
+      activityTypeId: selectedActivityType?.id
     };
     
-    setTimeEntries([newEntry, ...timeEntries]);
-    handleClose();
+    // Only update rate if it hasn't been manually overridden
+    if (!rateOverridden) {
+      const rate = lookupRate(options);
+      setHourlyRate(rate);
+    }
   };
 
+  // Handle rate change with confirmation for override
+  const handleRateChange = (newRate) => {
+    // If first time setting or user already confirmed override
+    if (hourlyRate === 0 || rateOverridden) {
+      setHourlyRate(newRate);
+      setRateOverridden(true);
+    } else {
+      // Ask for confirmation before overriding the default rate
+      setPendingRateChange(newRate);
+      setRateConfirmOpen(true);
+    }
+  };
+  
+  // Confirm rate override
+  const confirmRateOverride = () => {
+    setHourlyRate(pendingRateChange);
+    setRateOverridden(true);
+    setRateConfirmOpen(false);
+  };
+  
+  // Cancel rate override
+  const cancelRateOverride = () => {
+    setPendingRateChange(null);
+    setRateConfirmOpen(false);
+  };
+  
+  // Reset rate override
+  const resetRateOverride = () => {
+    setRateOverridden(false);
+    fetchBillingRate(); // Fetch the default rate again
+  };
+
+  // Call fetchBillingRate when relevant selections change
+  useEffect(() => {
+    if (!rateOverridden) {
+      fetchBillingRate();
+    }
+  }, [selectedClient, selectedMatter, selectedPracticeArea, selectedActivityType]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    
+    // Calculate duration in hours
+    const durationInHours = calculateDuration();
+    
+    // Create the new time entry
+    const timeEntry = {
+      id: Date.now(),
+      client: selectedClient,
+      matter: selectedMatter,
+      description,
+      duration: durationInHours,
+      seconds: durationInHours * 3600, // Convert hours to seconds
+      startTime: startTime,
+      endTime: endTime,
+      date: selectedDate,
+      billableType,
+      practiceArea: selectedPracticeArea,
+      activityType: selectedActivityType,
+      hourlyRate
+    };
+    
+    // Add to time entries
+    addTimeEntry(timeEntry);
+    
+    // Reset form
+    resetForm();
+  };
+
+  // Handle deleting an entry
   const handleDeleteEntry = (id) => {
-    setTimeEntries(timeEntries.filter(entry => entry.id !== id));
+    deleteTimeEntry(id);
   };
 
   const handleDuplicateEntry = (entry) => {
+    // Create a deep copy of the entry with new ID and current date
     const duplicatedEntry = {
       ...entry,
       id: Date.now(),
       date: new Date(),
     };
     
-    setTimeEntries([duplicatedEntry, ...timeEntries]);
+    // Make sure duration and seconds are properly set
+    if (duplicatedEntry.duration && !duplicatedEntry.seconds) {
+      duplicatedEntry.seconds = duplicatedEntry.duration * 3600;
+    } else if (duplicatedEntry.seconds && !duplicatedEntry.duration) {
+      duplicatedEntry.duration = duplicatedEntry.seconds / 3600;
+    }
+    
+    // Make sure startTime and endTime are properly set
+    if (!duplicatedEntry.startTime || !duplicatedEntry.endTime) {
+      const end = new Date();
+      const start = duplicatedEntry.duration 
+        ? new Date(end.getTime() - (duplicatedEntry.duration * 3600 * 1000))
+        : new Date(end.getTime() - (duplicatedEntry.seconds * 1000));
+      
+      duplicatedEntry.startTime = start;
+      duplicatedEntry.endTime = end;
+    }
+    
+    addTimeEntry(duplicatedEntry);
   };
 
   const handleEditEntry = (entry) => {
     setSelectedDate(new Date(entry.date));
-    setStartTime(new Date(entry.startTime));
-    setEndTime(new Date(entry.endTime));
-    setDescription(entry.description);
-    setSelectedClient(defaultClients.find(client => client.id === entry.clientId));
-    setSelectedMatter(defaultMatters.find(matter => matter.id === entry.matterId));
-    setBillableType(entry.billableType);
-    setSelectedPracticeArea(defaultPracticeAreas.find(area => area.name === entry.practiceArea));
-    setSelectedActivityType(defaultActivityTypes.find(type => type.name === entry.activityType));
+    
+    // Handle start and end times
+    if (entry.startTime && entry.endTime) {
+      setStartTime(new Date(entry.startTime));
+      setEndTime(new Date(entry.endTime));
+    } else if (entry.seconds) {
+      // If we only have seconds, calculate approximate start and end times
+      const end = new Date();
+      const start = new Date(end.getTime() - (entry.seconds * 1000));
+      setStartTime(start);
+      setEndTime(end);
+    } else {
+      // Default to current time with 1 hour difference
+      setStartTime(new Date());
+      setEndTime(new Date(new Date().setHours(new Date().getHours() + 1)));
+    }
+    
+    setDescription(entry.description || '');
+    
+    // Handle client selection
+    if (entry.client) {
+      if (typeof entry.client === 'object') {
+        setSelectedClient(entry.client);
+      } else {
+        setSelectedClient(defaultClients.find(client => client.name === entry.client) || null);
+      }
+    } else {
+      setSelectedClient(null);
+    }
+    
+    // Handle matter selection
+    if (entry.matter) {
+      if (typeof entry.matter === 'object') {
+        setSelectedMatter(entry.matter);
+      } else {
+        setSelectedMatter(defaultMatters.find(matter => matter.name === entry.matter) || null);
+      }
+    } else {
+      setSelectedMatter(null);
+    }
+    
+    setBillableType(entry.billableType || 'billable');
+    
+    // Handle practice area
+    if (entry.practiceArea) {
+      if (typeof entry.practiceArea === 'object') {
+        setSelectedPracticeArea(entry.practiceArea);
+      } else {
+        setSelectedPracticeArea(defaultPracticeAreas.find(area => area.name === entry.practiceArea) || null);
+      }
+    } else {
+      setSelectedPracticeArea(null);
+    }
+    
+    // Handle activity type
+    if (entry.activityType) {
+      if (typeof entry.activityType === 'object') {
+        setSelectedActivityType(entry.activityType);
+      } else {
+        setSelectedActivityType(defaultActivityTypes.find(type => type.name === entry.activityType) || null);
+      }
+    } else {
+      setSelectedActivityType(null);
+    }
+    
+    // Set hourly rate
+    setHourlyRate(entry.hourlyRate || 0);
     
     // Delete the old entry
-    setTimeEntries(timeEntries.filter(e => e.id !== entry.id));
+    deleteTimeEntry(entry.id);
     
     // Open the dialog
     setOpen(true);
@@ -217,7 +357,7 @@ const ManualTimeEntry = ({
       return entry;
     });
     
-    setTimeEntries(updatedEntries);
+    updatedEntries.forEach(entry => addTimeEntry(entry));
     setBulkEditMode(false);
     setSelectedEntries([]);
     setBulkEditField('');
@@ -228,7 +368,7 @@ const ManualTimeEntry = ({
     if (selectedEntries.length === 0) return;
     
     if (window.confirm(`Are you sure you want to delete ${selectedEntries.length} entries?`)) {
-      setTimeEntries(timeEntries.filter(entry => !selectedEntries.includes(entry.id)));
+      selectedEntries.forEach(id => deleteTimeEntry(id));
       setSelectedEntries([]);
       setBulkEditMode(false);
     }
@@ -411,14 +551,29 @@ const ManualTimeEntry = ({
                     )}
                     <td style={{ padding: '12px 16px' }}>{formatDate(entry.date)}</td>
                     <td style={{ padding: '12px 16px' }}>
-                      {formatTime(entry.startTime)} - {formatTime(entry.endTime)}
+                      {entry.startTime && entry.endTime ? `${formatTime(entry.startTime)} - ${formatTime(entry.endTime)}` : '-'}
                     </td>
-                    <td style={{ padding: '12px 16px' }}>{entry.duration.toFixed(1)}h</td>
-                    <td style={{ padding: '12px 16px' }}>{entry.client}</td>
-                    <td style={{ padding: '12px 16px' }}>{entry.matter}</td>
+                    <td style={{ padding: '12px 16px' }}>
+                      {entry.duration ? entry.duration.toFixed(1) : 
+                       (entry.seconds ? (entry.seconds / 3600).toFixed(1) : '0.0')}h
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      {entry.client && typeof entry.client === 'object' ? entry.client.name : entry.client}
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      {entry.matter && typeof entry.matter === 'object' ? entry.matter.name : entry.matter}
+                    </td>
                     <td style={{ padding: '12px 16px' }}>{entry.description}</td>
-                    <td style={{ padding: '12px 16px' }}>{entry.practiceArea || '-'}</td>
-                    <td style={{ padding: '12px 16px' }}>{entry.activityType || '-'}</td>
+                    <td style={{ padding: '12px 16px' }}>
+                      {entry.practiceArea ? 
+                        (typeof entry.practiceArea === 'object' ? entry.practiceArea.name : entry.practiceArea) 
+                        : '-'}
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      {entry.activityType ? 
+                        (typeof entry.activityType === 'object' ? entry.activityType.name : entry.activityType) 
+                        : '-'}
+                    </td>
                     <td style={{ padding: '12px 16px' }}>
                       <span style={{ 
                         padding: '4px 8px', 
@@ -611,6 +766,31 @@ const ManualTimeEntry = ({
                   </Typography>
                 </Box>
               </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Billing Rate ($/hr)"
+                  type="number"
+                  value={hourlyRate}
+                  onChange={(e) => handleRateChange(parseFloat(e.target.value))}
+                  fullWidth
+                  margin="normal"
+                  InputProps={{
+                    startAdornment: (
+                      <Tooltip title={rateOverridden ? "Reset to default rate" : "Using default rate"}>
+                        <IconButton 
+                          size="small" 
+                          onClick={resetRateOverride}
+                          disabled={!rateOverridden}
+                          sx={{ mr: 1 }}
+                        >
+                          {rateOverridden ? <EditIcon color="primary" /> : <EditIcon color="disabled" />}
+                        </IconButton>
+                      </Tooltip>
+                    )
+                  }}
+                  disabled={billableType !== 'billable'}
+                />
+              </Grid>
             </Grid>
           </LocalizationProvider>
         </DialogContent>
@@ -618,10 +798,29 @@ const ManualTimeEntry = ({
           <Button onClick={handleClose}>Cancel</Button>
           <Button 
             variant="contained" 
-            onClick={handleSave}
+            onClick={handleSubmit}
             disabled={!selectedClient || !selectedMatter || !description}
           >
             Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Rate Override Confirmation Dialog */}
+      <Dialog open={rateConfirmOpen} onClose={cancelRateOverride}>
+        <DialogTitle>Override Billing Rate?</DialogTitle>
+        <DialogContent>
+          <Typography>
+            You are about to change the billing rate from ${hourlyRate}/hr to ${pendingRateChange}/hr for this time entry.
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 2 }}>
+            This will override the default rate for this time entry only and will not affect future entries.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={cancelRateOverride}>Cancel</Button>
+          <Button onClick={confirmRateOverride} variant="contained" color="primary">
+            Override Rate
           </Button>
         </DialogActions>
       </Dialog>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useContext, createContext, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -75,8 +75,18 @@ const sampleActivityTypes = [
   { id: 5, name: 'Meeting' }
 ];
 
+// Create context for billing rates
+export const BillingRatesContext = createContext({
+  rates: [],
+  lookupRate: () => 0,
+  addRate: () => {},
+  updateRate: () => {},
+  deleteRate: () => {},
+  duplicateRate: () => {}
+});
+
 // Sample billing rates
-const sampleBillingRates = [
+export const sampleBillingRates = [
   { 
     id: 1, 
     name: 'Standard Hourly Rate', 
@@ -150,6 +160,185 @@ const sampleBillingRates = [
     description: 'Flat fee for standard contract review'
   }
 ];
+
+// Utility function to find the best matching rate
+export const findBestMatchingRate = (options = {}) => {
+  const { 
+    rates = sampleBillingRates,
+    clientId = null, 
+    matterId = null, 
+    practiceAreaId = null, 
+    activityTypeId = null 
+  } = options;
+
+  // Find the most specific matching rate
+  let matchedRate = null;
+  
+  // Try to find client + matter + activity type
+  if (clientId && matterId && activityTypeId) {
+    matchedRate = rates.find(r => 
+      r.clientId === clientId && 
+      r.matterId === matterId && 
+      r.activityTypeId === activityTypeId
+    );
+  }
+  
+  // Try to find client + matter + practice area
+  if (!matchedRate && clientId && matterId && practiceAreaId) {
+    matchedRate = rates.find(r => 
+      r.clientId === clientId && 
+      r.matterId === matterId && 
+      r.practiceAreaId === practiceAreaId
+    );
+  }
+  
+  // Try to find client + matter
+  if (!matchedRate && clientId && matterId) {
+    matchedRate = rates.find(r => 
+      r.clientId === clientId && 
+      r.matterId === matterId
+    );
+  }
+  
+  // Try to find client + practice area
+  if (!matchedRate && clientId && practiceAreaId) {
+    matchedRate = rates.find(r => 
+      r.clientId === clientId && 
+      r.practiceAreaId === practiceAreaId
+    );
+  }
+  
+  // Try to find client + activity type
+  if (!matchedRate && clientId && activityTypeId) {
+    matchedRate = rates.find(r => 
+      r.clientId === clientId && 
+      r.activityTypeId === activityTypeId
+    );
+  }
+  
+  // Try to find client only
+  if (!matchedRate && clientId) {
+    matchedRate = rates.find(r => 
+      r.clientId === clientId && 
+      !r.matterId && 
+      !r.practiceAreaId && 
+      !r.activityTypeId
+    );
+  }
+  
+  // Try to find practice area + activity type
+  if (!matchedRate && practiceAreaId && activityTypeId) {
+    matchedRate = rates.find(r => 
+      r.practiceAreaId === practiceAreaId && 
+      r.activityTypeId === activityTypeId
+    );
+  }
+  
+  // Try to find practice area only
+  if (!matchedRate && practiceAreaId) {
+    matchedRate = rates.find(r => 
+      r.practiceAreaId === practiceAreaId && 
+      !r.clientId && 
+      !r.matterId && 
+      !r.activityTypeId
+    );
+  }
+  
+  // Try to find activity type only
+  if (!matchedRate && activityTypeId) {
+    matchedRate = rates.find(r => 
+      r.activityTypeId === activityTypeId && 
+      !r.clientId && 
+      !r.matterId && 
+      !r.practiceAreaId
+    );
+  }
+  
+  // Use default rate if no matches
+  if (!matchedRate) {
+    matchedRate = rates.find(r => 
+      r.isDefault && 
+      r.type === 'hourly'
+    );
+  }
+  
+  // Fallback to first rate if no default rate
+  if (!matchedRate) {
+    matchedRate = rates.find(r => r.type === 'hourly') || rates[0];
+  }
+  
+  return matchedRate;
+};
+
+// Provider component
+export const BillingRatesProvider = ({ children }) => {
+  const [rates, setRates] = useState(sampleBillingRates);
+  
+  // Look up the best matching rate
+  const lookupRate = (options) => {
+    const rate = findBestMatchingRate({ rates, ...options });
+    return rate ? rate.rate : 0;
+  };
+  
+  // Add a new rate
+  const addRate = (newRate) => {
+    const rateWithId = {
+      ...newRate,
+      id: Math.max(...rates.map(r => r.id)) + 1
+    };
+    setRates([...rates, rateWithId]);
+    return rateWithId;
+  };
+  
+  // Update an existing rate
+  const updateRate = (updatedRate) => {
+    setRates(rates.map(rate => 
+      rate.id === updatedRate.id ? updatedRate : rate
+    ));
+    return updatedRate;
+  };
+  
+  // Delete a rate
+  const deleteRate = (id) => {
+    setRates(rates.filter(rate => rate.id !== id));
+  };
+  
+  // Duplicate a rate
+  const duplicateRate = (rate) => {
+    const newRate = {
+      ...rate,
+      id: Math.max(...rates.map(r => r.id)) + 1,
+      name: `Copy of ${rate.name}`,
+      isDefault: false
+    };
+    setRates([...rates, newRate]);
+    return newRate;
+  };
+  
+  return (
+    <BillingRatesContext.Provider 
+      value={{ 
+        rates, 
+        lookupRate, 
+        addRate, 
+        updateRate,
+        deleteRate,
+        duplicateRate
+      }}
+    >
+      {children}
+    </BillingRatesContext.Provider>
+  );
+};
+
+// Custom hook to use billing rates
+export const useBillingRates = () => {
+  const context = useContext(BillingRatesContext);
+  if (!context) {
+    throw new Error('useBillingRates must be used within a BillingRatesProvider');
+  }
+  return context;
+};
 
 const BillingRateManager = () => {
   const [billingRates, setBillingRates] = useState(sampleBillingRates);

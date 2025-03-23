@@ -24,7 +24,8 @@ import {
   Grid,
   Divider,
   Switch,
-  FormControlLabel
+  FormControlLabel,
+  InputAdornment
 } from '@mui/material';
 import { 
   PlayArrow as PlayIcon, 
@@ -41,8 +42,11 @@ import {
   VisibilityOff as VisibilityOffIcon,
   NotificationsActive as NotificationIcon,
   EventNote as EventIcon,
-  Description as DocumentIcon
+  Description as DocumentIcon,
+  Error as ErrorIcon
 } from '@mui/icons-material';
+import { useBillingRates } from '../billing/BillingRateManager';
+import { useTimeTracking } from '../../contexts/TimeTrackingContext';
 
 const IDLE_TIMEOUT = 5 * 60 * 1000; // 5 minutes in milliseconds
 const IDLE_CHECK_INTERVAL = 60 * 1000; // Check every minute
@@ -50,8 +54,6 @@ const IDLE_CHECK_INTERVAL = 60 * 1000; // Check every minute
 const AutomaticTimer = ({ 
   clients = [], 
   matters = [], 
-  timeEntries = [], 
-  setTimeEntries,
   practiceAreas = [],
   activityTypes = [],
   roundingIncrement = 0.1, // Default to 6-minute increments (0.1 hour)
@@ -64,6 +66,10 @@ const AutomaticTimer = ({
   const [billableType, setBillableType] = useState('billable');
   const [selectedPracticeArea, setSelectedPracticeArea] = useState(null);
   const [selectedActivityType, setSelectedActivityType] = useState(null);
+  const [hourlyRate, setHourlyRate] = useState(0);
+  const [rateOverridden, setRateOverridden] = useState(false);
+  const [rateConfirmOpen, setRateConfirmOpen] = useState(false);
+  const [pendingRateChange, setPendingRateChange] = useState(null);
   const [recentTimeEntries, setRecentTimeEntries] = useState([]);
   const [idleDialogOpen, setIdleDialogOpen] = useState(false);
   const [idleTime, setIdleTime] = useState(0);
@@ -72,9 +78,17 @@ const AutomaticTimer = ({
   const [backgroundEvents, setBackgroundEvents] = useState([]);
   const [showBackgroundEvents, setShowBackgroundEvents] = useState(false);
   const [idleDetectionEnabled, setIdleDetectionEnabled] = useState(true);
+  const [errors, setErrors] = useState({
+    client: false,
+    matter: false,
+    description: false
+  });
+  const [validationDialogOpen, setValidationDialogOpen] = useState(false);
 
   const timerRef = useRef(null);
   const idleCheckRef = useRef(null);
+  const { lookupRate } = useBillingRates();
+  const { timeEntries, addTimeEntry, updateTimeEntry, deleteTimeEntry } = useTimeTracking();
 
   // Example clients data if not provided
   const defaultClients = clients.length > 0 ? clients : [
@@ -235,11 +249,7 @@ const AutomaticTimer = ({
   };
 
   const handleStart = () => {
-    if (!selectedClient || !selectedMatter) {
-      alert('Please select a client and matter before starting the timer');
-      return;
-    }
-    
+    // Starting the timer no longer requires client and matter to be selected
     setIsRunning(true);
     setLastActivityTime(Date.now());
   };
@@ -252,39 +262,57 @@ const AutomaticTimer = ({
     setIsRunning(false);
     
     if (seconds > 0) {
+      // Validate all required fields before allowing the time entry to be saved
+      const newErrors = {
+        client: !selectedClient,
+        matter: !selectedMatter,
+        description: !description.trim()
+      };
+      
+      const hasErrors = Object.values(newErrors).some(error => error);
+      
+      setErrors(newErrors);
+      
+      if (hasErrors) {
+        setValidationDialogOpen(true);
+        return;
+      }
+      
       saveTimeEntry(seconds);
     }
   };
 
   const saveTimeEntry = (durationInSeconds) => {
-    if (!selectedClient || !selectedMatter || !description) {
-      alert('Please fill in all required fields');
+    // Only save if we have a client and matter selected
+    if (!selectedClient || !selectedMatter) {
       return;
     }
     
-    const roundedHours = applyRounding(durationInSeconds);
+    // Calculate hours from seconds and apply rounding
+    const durationInHours = applyRounding(durationInSeconds);
     
-    const newEntry = {
+    const entry = {
       id: Date.now(),
+      client: selectedClient,
+      matter: selectedMatter,
+      description: description,
+      seconds: durationInSeconds,
+      duration: durationInHours,
       date: new Date(),
-      startTime: new Date(Date.now() - (durationInSeconds * 1000)),
+      startTime: new Date(Date.now() - durationInSeconds * 1000),
       endTime: new Date(),
-      duration: roundedHours,
-      description,
-      client: selectedClient.name,
-      clientId: selectedClient.id,
-      matter: selectedMatter.name,
-      matterId: selectedMatter.id,
-      caseNumber: selectedMatter.caseNumber,
-      billableType,
-      practiceArea: selectedPracticeArea?.name || '',
-      activityType: selectedActivityType?.name || '',
-      status: 'unbilled',
-      automatic: true
+      billableType: billableType,
+      practiceArea: selectedPracticeArea,
+      activityType: selectedActivityType,
+      hourlyRate: hourlyRate
     };
     
-    setTimeEntries([newEntry, ...timeEntries]);
-    setRecentTimeEntries([newEntry, ...recentTimeEntries.slice(0, 4)]);
+    // Add to global time entries context
+    addTimeEntry(entry);
+    
+    // Also keep a local copy for this component's UI
+    setRecentTimeEntries(prev => [entry, ...prev]);
+    
     resetTimer();
   };
 
@@ -301,6 +329,7 @@ const AutomaticTimer = ({
   };
 
   const handleKeepIdleTime = () => {
+    // Include practice area and activity type objects in the time entry
     saveTimeEntry(idleTime);
     setIdleDialogOpen(false);
   };
@@ -320,8 +349,7 @@ const AutomaticTimer = ({
   };
 
   const handleDeleteEntry = (id) => {
-    setTimeEntries(timeEntries.filter(entry => entry.id !== id));
-    setRecentTimeEntries(recentTimeEntries.filter(entry => entry.id !== id));
+    deleteTimeEntry(id);
   };
 
   const getBackgroundEventIcon = (type) => {
@@ -335,6 +363,108 @@ const AutomaticTimer = ({
       default:
         return <MoreIcon />;
     }
+  };
+
+  // Function to fetch billing rate based on client, matter, practice area and activity type
+  const fetchBillingRate = () => {
+    if (!selectedClient) return;
+    
+    const options = {
+      clientId: selectedClient?.id,
+      matterId: selectedMatter?.id,
+      practiceAreaId: selectedPracticeArea?.id,
+      activityTypeId: selectedActivityType?.id
+    };
+    
+    // Only update rate if it hasn't been manually overridden
+    if (!rateOverridden) {
+      const rate = lookupRate(options);
+      setHourlyRate(rate);
+    }
+  };
+
+  // Handle rate change with confirmation for override
+  const handleRateChange = (newRate) => {
+    // If first time setting or user already confirmed override
+    if (hourlyRate === 0 || rateOverridden) {
+      setHourlyRate(newRate);
+      setRateOverridden(true);
+    } else {
+      // Ask for confirmation before overriding the default rate
+      setPendingRateChange(newRate);
+      setRateConfirmOpen(true);
+    }
+  };
+  
+  // Confirm rate override
+  const confirmRateOverride = () => {
+    setHourlyRate(pendingRateChange);
+    setRateOverridden(true);
+    setRateConfirmOpen(false);
+  };
+  
+  // Cancel rate override
+  const cancelRateOverride = () => {
+    setPendingRateChange(null);
+    setRateConfirmOpen(false);
+  };
+  
+  // Reset rate override
+  const resetRateOverride = () => {
+    setRateOverridden(false);
+    fetchBillingRate(); // Fetch the default rate again
+  };
+
+  // Call fetchBillingRate when relevant selections change
+  useEffect(() => {
+    if (!rateOverridden) {
+      fetchBillingRate();
+    }
+  }, [selectedClient, selectedMatter, selectedPracticeArea, selectedActivityType]);
+
+  // Display time entries, including any from QuickTimer
+  useEffect(() => {
+    // Combine global timeEntries with local recentTimeEntries for display
+    const combinedEntries = [...timeEntries];
+    
+    // Sort by date, most recent first
+    combinedEntries.sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    // Update local state
+    setRecentTimeEntries(combinedEntries);
+  }, [timeEntries]);
+
+  // Function to check if all required fields are complete
+  const validateRequiredFields = () => {
+    const validationState = {
+      client: !!selectedClient,
+      matter: !!selectedMatter,
+      description: !!description.trim()
+    };
+    
+    return {
+      isValid: Object.values(validationState).every(valid => valid),
+      validationState
+    };
+  };
+
+  // Real-time validation effect
+  useEffect(() => {
+    // Only update errors during active timing to not annoy users initially
+    if (isRunning) {
+      const { validationState } = validateRequiredFields();
+      setErrors(prevErrors => ({
+        ...prevErrors,
+        ...Object.fromEntries(
+          Object.entries(validationState).map(([key, valid]) => [key, !valid])
+        )
+      }));
+    }
+  }, [selectedClient, selectedMatter, description, isRunning]);
+
+  const handleContinueWorking = () => {
+    setValidationDialogOpen(false);
+    setIsRunning(true); // Resume timing
   };
 
   return (
@@ -355,7 +485,6 @@ const AutomaticTimer = ({
                     color="primary" 
                     startIcon={<PlayIcon />}
                     onClick={handleStart}
-                    disabled={!selectedClient || !selectedMatter}
                   >
                     Start
                   </Button>
@@ -391,6 +520,28 @@ const AutomaticTimer = ({
                 </Button>
               </Stack>
               
+              {isRunning && (
+                <Box sx={{ mb: 2, mt: 1 }}>
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={validateRequiredFields().isValid ? 100 : 
+                      Object.values(validateRequiredFields().validationState)
+                        .filter(Boolean).length * 100 / 3} 
+                    color={validateRequiredFields().isValid ? "success" : "warning"}
+                  />
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      {validateRequiredFields().isValid ? 
+                        "All required fields complete" : 
+                        "Please complete all required fields"}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {Object.values(validateRequiredFields().validationState).filter(Boolean).length}/3
+                    </Typography>
+                  </Box>
+                </Box>
+              )}
+              
               <Stack spacing={2}>
                 <Autocomplete
                   options={defaultClients}
@@ -399,6 +550,11 @@ const AutomaticTimer = ({
                   onChange={(event, newValue) => {
                     setSelectedClient(newValue);
                     setSelectedMatter(null);
+                    
+                    // Clear client error when value is selected
+                    if (newValue) {
+                      setErrors(prev => ({...prev, client: false}));
+                    }
                   }}
                   renderInput={(params) => (
                     <TextField 
@@ -407,9 +563,10 @@ const AutomaticTimer = ({
                       variant="outlined" 
                       fullWidth 
                       required
+                      error={errors.client}
+                      helperText={errors.client ? "Client is required" : ""}
                     />
                   )}
-                  disabled={isRunning}
                 />
                 
                 <Autocomplete
@@ -418,8 +575,13 @@ const AutomaticTimer = ({
                   value={selectedMatter}
                   onChange={(event, newValue) => {
                     setSelectedMatter(newValue);
+                    
+                    // Clear matter error when value is selected
+                    if (newValue) {
+                      setErrors(prev => ({...prev, matter: false}));
+                    }
                   }}
-                  disabled={!selectedClient || isRunning}
+                  disabled={!selectedClient}
                   renderInput={(params) => (
                     <TextField 
                       {...params} 
@@ -427,6 +589,8 @@ const AutomaticTimer = ({
                       variant="outlined" 
                       fullWidth 
                       required
+                      error={errors.matter}
+                      helperText={errors.matter ? "Matter is required" : ""}
                     />
                   )}
                 />
@@ -438,8 +602,17 @@ const AutomaticTimer = ({
                   multiline
                   rows={2}
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={(e) => {
+                    setDescription(e.target.value);
+                    
+                    // Clear description error when value is entered
+                    if (e.target.value.trim()) {
+                      setErrors(prev => ({...prev, description: false}));
+                    }
+                  }}
                   required
+                  error={errors.description}
+                  helperText={errors.description ? "Description is required" : ""}
                 />
                 
                 <Grid container spacing={2}>
@@ -450,7 +623,6 @@ const AutomaticTimer = ({
                         value={billableType}
                         label="Billable Type"
                         onChange={(e) => setBillableType(e.target.value)}
-                        disabled={isRunning}
                       >
                         <MenuItem value="billable">Billable</MenuItem>
                         <MenuItem value="non-billable">Non-Billable</MenuItem>
@@ -467,7 +639,6 @@ const AutomaticTimer = ({
                       onChange={(event, newValue) => {
                         setSelectedPracticeArea(newValue);
                       }}
-                      disabled={isRunning}
                       renderInput={(params) => (
                         <TextField 
                           {...params} 
@@ -487,7 +658,6 @@ const AutomaticTimer = ({
                       onChange={(event, newValue) => {
                         setSelectedActivityType(newValue);
                       }}
-                      disabled={isRunning}
                       renderInput={(params) => (
                         <TextField 
                           {...params} 
@@ -499,6 +669,18 @@ const AutomaticTimer = ({
                     />
                   </Grid>
                 </Grid>
+                
+                <TextField
+                  label="Hourly Rate"
+                  type="number"
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                  }}
+                  fullWidth
+                  value={hourlyRate}
+                  onChange={(e) => handleRateChange(parseFloat(e.target.value))}
+                  helperText={rateOverridden ? "Custom rate applied" : "Default rate based on client/matter"}
+                />
                 
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <FormControlLabel
@@ -537,10 +719,10 @@ const AutomaticTimer = ({
                             {entry.description}
                           </Typography>
                           <Typography variant="body2" color="textSecondary">
-                            {entry.client} • {entry.matter}
+                            {entry.client.name} • {entry.matter.name}
                           </Typography>
                           <Typography variant="body2" color="textSecondary">
-                            {formatDate(entry.date)} • {entry.duration.toFixed(1)} hours
+                            {formatDate(entry.date)} • {entry.duration ? entry.duration.toFixed(1) : (entry.seconds / 3600).toFixed(1)} hours
                           </Typography>
                         </Box>
                         <IconButton size="small" color="error" onClick={() => handleDeleteEntry(entry.id)}>
@@ -690,6 +872,71 @@ const AutomaticTimer = ({
           </Button>
           <Button onClick={handleKeepIdleTime} variant="contained">
             Keep Time
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Rate Override Confirmation Dialog */}
+      <Dialog open={rateConfirmOpen} onClose={cancelRateOverride}>
+        <DialogTitle>Override Billing Rate?</DialogTitle>
+        <DialogContent>
+          <Typography>
+            You are about to change the billing rate from ${hourlyRate}/hr to ${pendingRateChange}/hr for this time entry.
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 2 }}>
+            This will override the default rate for this time entry only and will not affect future entries.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={cancelRateOverride}>Cancel</Button>
+          <Button onClick={confirmRateOverride} variant="contained" color="primary">
+            Override Rate
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Validation Dialog */}
+      <Dialog open={validationDialogOpen} onClose={() => setValidationDialogOpen(false)}>
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <ErrorIcon color="error" />
+            <Typography variant="h6">Missing Required Fields</Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            Please complete the following required fields:
+          </Typography>
+          <Box component="ul" sx={{ pl: 2 }}>
+            {errors.client && <Box component="li"><Typography color="error">Client</Typography></Box>}
+            {errors.matter && <Box component="li"><Typography color="error">Matter</Typography></Box>}
+            {errors.description && <Box component="li"><Typography color="error">Description</Typography></Box>}
+          </Box>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            You can continue working and fill in these fields while the timer runs.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setValidationDialogOpen(false)} color="inherit">
+            Close
+          </Button>
+          <Button onClick={handleContinueWorking} variant="outlined" color="primary">
+            Continue Working
+          </Button>
+          <Button 
+            onClick={() => {
+              // Re-attempt to stop and save if all fields are now valid
+              const { isValid } = validateRequiredFields();
+              if (isValid) {
+                saveTimeEntry(seconds);
+                setValidationDialogOpen(false);
+              }
+            }} 
+            variant="contained" 
+            color="primary"
+            disabled={!validateRequiredFields().isValid}
+          >
+            Complete & Save
           </Button>
         </DialogActions>
       </Dialog>

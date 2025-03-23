@@ -13,6 +13,7 @@ import {
 import SearchIcon from '@mui/icons-material/Search';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import { alpha } from '@mui/material/styles';
+import QuickTimer from '../TimeTracking/QuickTimer';
 
 const Header = ({ title }) => {
   const theme = useTheme();
@@ -111,6 +112,38 @@ const Header = ({ title }) => {
                 }
               },
             }}
+          />
+        </Box>
+
+        {/* Quick Timer */}
+        <Box sx={{ mr: 2 }}>
+          <QuickTimer 
+            // Sample data for the timer
+            clients={[
+              { id: 1, name: 'Acme Corporation' },
+              { id: 2, name: 'Wayne Enterprises' },
+              { id: 3, name: 'Stark Industries' },
+            ]}
+            matters={[
+              { id: 1, name: 'Corporate Restructuring', clientId: 1, caseNumber: 'ACM-2023-001' },
+              { id: 2, name: 'Patent Infringement', clientId: 1, caseNumber: 'ACM-2023-002' },
+              { id: 3, name: 'Merger Review', clientId: 2, caseNumber: 'WE-2023-001' },
+              { id: 4, name: 'Intellectual Property', clientId: 3, caseNumber: 'SI-2023-001' },
+            ]}
+            practiceAreas={[
+              { id: 1, name: 'Contract Review' },
+              { id: 2, name: 'Litigation' },
+              { id: 3, name: 'Corporate Law' },
+              { id: 4, name: 'Intellectual Property' },
+              { id: 5, name: 'Real Estate' }
+            ]}
+            activityTypes={[
+              { id: 1, name: 'Research' },
+              { id: 2, name: 'Client Call' },
+              { id: 3, name: 'Document Drafting' },
+              { id: 4, name: 'Court Appearance' },
+              { id: 5, name: 'Meeting' }
+            ]}
           />
         </Box>
 

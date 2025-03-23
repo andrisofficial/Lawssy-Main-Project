@@ -34,8 +34,8 @@ const Sidebar = () => {
 
   // Theme colors for easy future changes
   const COLORS = {
-    active: '#0069D1',        // Active/selected item background
-    hover: 'rgba(2, 72, 141, 0.8)', // Hover state background
+    active: '#1F4290',        // Active/selected item background
+    hover: 'rgba(0, 54, 109, 0.8)', // Hover state background
     textActive: '#FFFFFF',    // Active text color
     textNormal: 'rgba(255, 255, 255, 0.8)', // Normal text color
     divider: 'rgba(255, 255, 255, 0.1)', // Divider color

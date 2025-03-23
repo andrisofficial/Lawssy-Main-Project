@@ -4,6 +4,7 @@ import { TabContext, TabPanel } from '@mui/lab';
 import MainLayout from '../components/layout/MainLayout';
 import Timer from '../components/TimeTracking/Timer';
 import Billing from '../components/TimeTracking/Billing';
+import { BillingRatesProvider } from '../components/billing/BillingRateManager';
 
 const TimeTrackingPage = () => {
   const [tabValue, setTabValue] = useState('timer');
@@ -33,74 +34,76 @@ const TimeTrackingPage = () => {
 
   return (
     <MainLayout title="Time Tracking & Billing">
-      <Container maxWidth="xl" sx={{ py: 3, px: { xs: 2, sm: 3 } }}>
-        <Paper 
-          elevation={0} 
-          sx={{ 
-            borderRadius: '0.75rem',
-            border: '1px solid',
-            borderColor: '#F3F4F6',
-            overflow: 'hidden',
-            mb: 3
-          }}
-        >
-          <TabContext value={tabValue}>
-            <Box sx={{ 
-              borderBottom: 1, 
-              borderColor: '#F3F4F6'
-            }}>
-              <Tabs 
-                value={tabValue} 
-                onChange={handleTabChange}
-                aria-label="time tracking tabs"
-                sx={{
-                  '& .MuiTabs-indicator': {
-                    backgroundColor: theme.palette.primary.main,
-                    height: 3
-                  },
-                  px: 2,
-                  pt: 2
-                }}
-              >
-                <Tab 
-                  label="Time Tracking" 
-                  value="timer" 
-                  sx={{ 
-                    textTransform: 'none', 
-                    fontWeight: 600,
-                    fontSize: '0.9rem',
-                    minHeight: '48px',
-                    '&.Mui-selected': {
-                      color: theme.palette.primary.main
-                    }
+      <BillingRatesProvider>
+        <Container maxWidth="xl" sx={{ py: 3, px: { xs: 2, sm: 3 } }}>
+          <Paper 
+            elevation={0} 
+            sx={{ 
+              borderRadius: '0.75rem',
+              border: '1px solid',
+              borderColor: '#F3F4F6',
+              overflow: 'hidden',
+              mb: 3
+            }}
+          >
+            <TabContext value={tabValue}>
+              <Box sx={{ 
+                borderBottom: 1, 
+                borderColor: '#F3F4F6'
+              }}>
+                <Tabs 
+                  value={tabValue} 
+                  onChange={handleTabChange}
+                  aria-label="time tracking tabs"
+                  sx={{
+                    '& .MuiTabs-indicator': {
+                      backgroundColor: theme.palette.primary.main,
+                      height: 3
+                    },
+                    px: 2,
+                    pt: 2
                   }}
-                />
-                <Tab 
-                  label="Billing & Invoices" 
-                  value="billing" 
-                  sx={{ 
-                    textTransform: 'none', 
-                    fontWeight: 600,
-                    fontSize: '0.9rem',
-                    minHeight: '48px',
-                    '&.Mui-selected': {
-                      color: theme.palette.primary.main
-                    }
-                  }}
-                />
-              </Tabs>
-            </Box>
-            
-            <TabPanel value="timer" sx={{ p: { xs: 2, sm: 3 } }}>
-              <Timer clients={clients} matters={matters} />
-            </TabPanel>
-            
-            <TabPanel value="billing" sx={{ p: { xs: 2, sm: 3 } }}>
-              <Billing clients={clients} matters={matters} />
-            </TabPanel>
-          </TabContext>
-        </Paper>
-      </Container>
+                >
+                  <Tab 
+                    label="Time Tracking" 
+                    value="timer" 
+                    sx={{ 
+                      textTransform: 'none', 
+                      fontWeight: 600,
+                      fontSize: '0.9rem',
+                      minHeight: '48px',
+                      '&.Mui-selected': {
+                        color: theme.palette.primary.main
+                      }
+                    }}
+                  />
+                  <Tab 
+                    label="Billing & Invoices" 
+                    value="billing" 
+                    sx={{ 
+                      textTransform: 'none', 
+                      fontWeight: 600,
+                      fontSize: '0.9rem',
+                      minHeight: '48px',
+                      '&.Mui-selected': {
+                        color: theme.palette.primary.main
+                      }
+                    }}
+                  />
+                </Tabs>
+              </Box>
+              
+              <TabPanel value="timer" sx={{ p: { xs: 2, sm: 3 } }}>
+                <Timer clients={clients} matters={matters} />
+              </TabPanel>
+              
+              <TabPanel value="billing" sx={{ p: { xs: 2, sm: 3 } }}>
+                <Billing clients={clients} matters={matters} />
+              </TabPanel>
+            </TabContext>
+          </Paper>
+        </Container>
+      </BillingRatesProvider>
     </MainLayout>
   );
 };

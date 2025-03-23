@@ -16,7 +16,6 @@ import TimeRoundingSettings from './TimeRoundingSettings';
 
 const Timer = ({ clients = [], matters = [] }) => {
   const [tabValue, setTabValue] = useState('automatic');
-  const [timeEntries, setTimeEntries] = useState([]);
   const [practiceAreas, setPracticeAreas] = useState([
     { id: 1, name: 'Contract Review' },
     { id: 2, name: 'Litigation' },
@@ -63,8 +62,6 @@ const Timer = ({ clients = [], matters = [] }) => {
             <AutomaticTimer 
               clients={clients} 
               matters={matters} 
-              timeEntries={timeEntries} 
-              setTimeEntries={setTimeEntries}
               practiceAreas={practiceAreas}
               activityTypes={activityTypes}
               roundingIncrement={globalRoundingIncrement}
@@ -75,8 +72,6 @@ const Timer = ({ clients = [], matters = [] }) => {
             <ManualTimeEntry 
               clients={clients} 
               matters={matters} 
-              timeEntries={timeEntries} 
-              setTimeEntries={setTimeEntries}
               practiceAreas={practiceAreas}
               activityTypes={activityTypes}
             />
