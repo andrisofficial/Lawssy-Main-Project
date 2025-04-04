@@ -25,7 +25,8 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import AssignmentIcon from '@mui/icons-material/Assignment';
+import ReceiptIcon from '@mui/icons-material/Receipt';
+import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
 
 const Sidebar = () => {
   const location = useLocation();
@@ -49,9 +50,14 @@ const Sidebar = () => {
       path: '/dashboard' 
     },
     { 
-      text: 'Time Tracking & Billing', 
+      text: 'Time Tracking', 
       icon: <AccessTimeIcon />, 
       path: '/time-tracking' 
+    },
+    { 
+      text: 'Billing', 
+      icon: <ReceiptIcon />, 
+      path: '/billing' 
     },
     { 
       text: 'Calendar', 
@@ -59,9 +65,9 @@ const Sidebar = () => {
       path: '/calendar' 
     },
     { 
-      text: 'Tasks', 
-      icon: <AssignmentIcon />, 
-      path: '/tasks' 
+      text: 'Matters', 
+      icon: <BusinessCenterIcon />, 
+      path: '/matters' 
     },
     { 
       text: 'Clients', 
@@ -72,11 +78,6 @@ const Sidebar = () => {
       text: 'Document Management', 
       icon: <FolderIcon />, 
       path: '/documents' 
-    },
-    { 
-      text: 'AI Contract Review', 
-      icon: <DescriptionIcon />, 
-      path: '/contract-review' 
     },
     { 
       text: 'Legal Research', 

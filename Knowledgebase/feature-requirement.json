@@ -1,0 +1,2357 @@
+[
+    {
+      "feature": "Case/Matter Management",
+      "prd": {
+        "version": "1.0",
+        "date": "2023-10-27",
+        "status": "Draft",
+        "introduction": "This document outlines the detailed product requirements for the Case/Matter Management feature of the LegalEase SaaS platform. It serves as the central hub for organizing, tracking, and managing all aspects of legal cases or matters.",
+        "goals": [
+          "Provide a centralized and organized view of all case information.",
+          "Streamline workflows for case creation, task management, and status tracking.",
+          "Enhance team collaboration on cases.",
+          "Ensure deadlines are tracked and met through automated reminders.",
+          "Facilitate compliance through conflict checking and audit trails.",
+          "Improve efficiency in accessing matter-related documents, notes, and activities."
+        ],
+        "user_roles_permissions": [
+          {"role": "Attorney", "permissions": "Full CRUD access to assigned matters, can manage team access, view all firm matters (configurable)."},
+          {"role": "Paralegal/Legal Assistant", "permissions": "CRUD access to assigned matters, task management, document uploads, note creation. View access might be limited by firm settings."},
+          {"role": "Administrator", "permissions": "Full CRUD access to all matters within the firm, manage templates, custom fields, and firm-wide settings."},
+          {"role": "Billing Specialist", "permissions": "Read-only access to matter details relevant for billing, potentially time/expense entry."},
+          {"role": "Client (via Portal)", "permissions": "Read-only access to specific matter details shared by the firm."}
+        ],
+        "functional_requirements": [
+          {
+            "id": "CM-001",
+            "title": "Matter Dashboard/Listing",
+            "description": "Provide a central view to list, filter, sort, and access all matters the user has permission to see.",
+            "requirements": [
+              "Display matters in a configurable view (list, grid/card).",
+              "Show key information columns/fields: Matter Name, Matter ID/Number, Client Name, Practice Area, Responsible Attorney, Status, Open Date, Key Dates (e.g., upcoming deadline).",
+              "Advanced filtering by: Status (Open, Closed, Pending, Custom), Practice Area, Client, Responsible Attorney, Date Range (Open, Closed, Statute), Custom Fields, Tags.",
+              "Sorting capabilities on all key columns.",
+              "Quick search bar within the matter list.",
+              "Visual indicators for priority or overdue tasks/deadlines.",
+              "Ability to customize displayed columns.",
+              "Batch actions (e.g., change status, assign attorney, archive - permission dependent)."
+            ],
+            "user_story": "As a lawyer, I want to quickly find and filter my active matters so I can prioritize my work effectively.",
+            "acceptance_criteria": [
+              "Filtering by status updates the list in under 1 second.",
+              "Users can save custom filter/sort views.",
+              "The dashboard loads within 2 seconds with up to 100 active matters visible.",
+              "Batch actions are logged in the audit trail."
+            ]
+          },
+          {
+            "id": "CM-002",
+            "title": "Matter Creation",
+            "description": "Allow users to create new matters with relevant details and associate them with clients.",
+            "requirements": [
+              "Initiate creation via a 'New Matter' button.",
+              "Multi-step wizard or single comprehensive form for creation.",
+              "Fields:",
+              "  - Basic Info: Matter Name (required), Matter Number (auto-generated or manual, unique within firm), Practice Area (required, customizable list), Matter Status (required, customizable list), Open Date (required, defaults to today).",
+              "  - Client Info: Select existing client (searchable dropdown) or Create New Client inline (requires name, email minimum).",
+              "  - Matter Details: Description (rich text), Statute of Limitations Date (optional), Court/Jurisdiction (optional), Case Number (optional).",
+              "  - Team Assignment: Responsible Attorney (required, dropdown), Other Assigned Staff (multi-select).",
+              "  - Billing Info: Billing Type (Hourly, Flat Fee, Contingency, Hybrid - required), Default Billing Rate (optional, pulled from settings), Retainer Amount (optional).",
+              "  - Custom Fields: Display custom fields relevant to the selected Practice Area.",
+              "Use pre-defined Matter Templates based on Practice Area to pre-fill certain fields or create initial task lists/workflows.",
+              "Conflict Checking (CM-008) should be performed upon client selection/creation.",
+              "Real-time validation using Zod schemas as defined in frontend/backend specs.",
+              "Save progress if the form is long or multi-step."
+            ],
+            "user_story": "As a legal assistant, I want to create a new matter quickly and accurately, capturing all necessary initial information and associating it with the correct client.",
+            "acceptance_criteria": [
+              "Matter Number uniqueness is enforced.",
+              "Conflict check runs automatically when client is selected.",
+              "Required fields are clearly marked and validated.",
+              "Upon successful creation, user is redirected to the new Matter Detail page."
+            ]
+          },
+          {
+            "id": "CM-003",
+            "title": "Matter Detail View",
+            "description": "Display comprehensive information about a specific matter in an organized manner.",
+            "requirements": [
+              "Accessible by clicking a matter from the list/dashboard.",
+              "Display matter header with key info: Name, Number, Client, Status, Responsible Attorney.",
+              "Tabbed interface for organization:",
+              "  - Overview: Summary widget, key dates, assigned team, quick stats (unread messages, overdue tasks, unbilled time).",
+              "  - Tasks: List of associated tasks (CM-004).",
+              "  - Documents: Linked documents (DM feature).",
+              "  - Notes: Chronological list of notes (CM-005).",
+              "  - Time & Billing: Related time entries, expenses, invoices (TB/BI features).",
+              "  - Calendar: Related events, deadlines (SC feature).",
+              "  - Client: Details of the associated client (CRM feature).",
+              "  - Activity: Audit trail/timeline of changes and activities (CM-007).",
+              "Ability to edit core matter details inline or via an 'Edit' mode (permission dependent).",
+              "Ability to change matter status.",
+              "Display custom fields relevant to the matter."
+            ],
+            "user_story": "As an attorney reviewing a case, I want to see all relevant information for a specific matter in one place, organized logically.",
+            "acceptance_criteria": [
+              "All relevant data for the matter is accessible from this view.",
+              "Tabs load their respective data efficiently (parallel requests, placeholders).",
+              "Navigation between tabs is smooth and preserves context."
+            ]
+          },
+          {
+            "id": "CM-004",
+            "title": "Task Management (within Matter)",
+            "description": "Manage tasks associated with a specific matter.",
+            "requirements": [
+              "View tasks associated with the current matter within the 'Tasks' tab.",
+              "Ability to add new tasks specific to the matter.",
+              "Task fields: Title (required), Description, Due Date (required), Assignee (required, team members), Priority (High, Medium, Low), Status (Not Started, In Progress, Completed, Waiting), Estimated Time, Billable toggle.",
+              "Link tasks to specific documents or notes within the matter.",
+              "Filter tasks by: Status, Assignee, Due Date Range, Priority.",
+              "Sort tasks by: Due Date, Priority, Title, Assignee.",
+              "Mark tasks as complete.",
+              "Edit existing tasks (permission dependent).",
+              "Receive notifications for assigned tasks and upcoming due dates.",
+              "Support for recurring tasks (e.g., weekly status report).",
+              "Option to create tasks from pre-defined Task Templates."
+            ],
+            "user_story": "As a paralegal, I need to track and manage all tasks for a matter, assign them to team members, and ensure deadlines are met.",
+            "acceptance_criteria": [
+              "New tasks automatically associate with the current matter.",
+              "Changing task status updates the view immediately.",
+              "Notifications are sent according to user preferences.",
+              "Filtering and sorting work correctly on the task list."
+            ]
+          },
+          {
+            "id": "CM-005",
+            "title": "Matter Notes",
+            "description": "Allow users to add and view notes related to a specific matter.",
+            "requirements": [
+              "View notes in a chronological list within the 'Notes' tab.",
+              "Ability to add new notes.",
+              "Rich text editor for note content (bold, italics, lists, links).",
+              "Automatically record the author and timestamp for each note.",
+              "Ability to tag notes (e.g., 'Client Call', 'Strategy', 'Meeting Summary').",
+              "Filter notes by author, date range, or tag.",
+              "Search functionality within notes for the specific matter.",
+              "Ability to edit/delete own notes (permission dependent).",
+              "Link notes to specific tasks or documents."
+            ],
+            "user_story": "As an attorney, I want to log important case notes, discussions, and thoughts related to a matter so my team and I can refer back to them.",
+            "acceptance_criteria": [
+              "Rich text formatting is saved and rendered correctly.",
+              "Author and timestamp are accurate and non-editable.",
+              "Filtering and searching return relevant notes quickly."
+            ]
+          },
+          {
+            "id": "CM-006",
+            "title": "Matter Status & Workflow",
+            "description": "Define and manage the lifecycle status of matters.",
+            "requirements": [
+              "Define customizable matter status options at the firm level (e.g., Intake, Active, Discovery, Negotiation, Trial Prep, Closed, Archived).",
+              "Ability to change the status of a matter from the list view or detail view (permission dependent).",
+              "Changing status prompts for optional notes.",
+              "Certain statuses may trigger automated workflows or task template applications (future enhancement).",
+              "Status changes are recorded in the Matter Activity/Audit Trail (CM-007).",
+              "Filtering by status is available on the main Matter Dashboard."
+            ],
+            "user_story": "As a firm administrator, I want to define standard matter statuses and track the progress of cases through our firm's workflow.",
+            "acceptance_criteria": [
+              "Custom statuses defined by admin are available for selection.",
+              "Status change is reflected immediately in the UI.",
+              "Status change is logged with user and timestamp."
+            ]
+          },
+          {
+            "id": "CM-007",
+            "title": "Matter Activity / Audit Trail",
+            "description": "Track and display a chronological history of actions performed on a matter.",
+            "requirements": [
+              "Display a feed of activities within the 'Activity' tab of the Matter Detail view.",
+              "Log key events: Matter creation, status changes, task creation/completion, document uploads/changes, note creation/updates, team assignment changes, key field edits.",
+              "Each log entry should include: Action performed, User who performed the action, Timestamp, Details/Changes made.",
+              "Filter activity log by user or date range.",
+              "Audit trail data should be immutable."
+            ],
+            "user_story": "As a managing partner, I want to see the history of activity on a matter for oversight and accountability.",
+            "acceptance_criteria": [
+              "All specified key events are logged accurately.",
+              "Logs are displayed in reverse chronological order.",
+              "Filtering works correctly."
+            ]
+          },
+          {
+            "id": "CM-008",
+            "title": "Conflict Checking",
+            "description": "Automatically check for potential conflicts of interest when adding clients or associating parties with matters.",
+            "requirements": [
+              "Trigger automatically during Matter Creation when a client is selected/created.",
+              "Trigger automatically when associating new parties (e.g., opposing counsel, related parties) to a matter.",
+              "Manual trigger option from the Matter Detail view.",
+              "Check against the firm's database of: Current Clients, Former Clients, Opposing Parties, Related Parties across all matters.",
+              "Search criteria should include: Name (including variations/fuzzy matching), Company Name, Email, Phone Number.",
+              "Display potential conflicts clearly, highlighting the matched information and the related matter(s).",
+              "Allow users to review potential conflicts and mark them as 'Not a Conflict' (with reason) or confirm a conflict.",
+              "Record conflict check results and resolution within the matter.",
+              "Firm-level configuration for conflict check sensitivity."
+            ],
+            "user_story": "As an attorney onboarding a new client, I need the system to automatically check for potential conflicts of interest to ensure ethical compliance.",
+            "acceptance_criteria": [
+              "Conflict check runs against the entire firm database.",
+              "Potential conflicts are presented clearly with links to relevant records.",
+              "User resolution of potential conflicts is logged.",
+              "Check completes within 3-5 seconds."
+            ]
+          },
+          {
+            "id": "CM-009",
+            "title": "Custom Fields",
+            "description": "Allow firms to define and use custom data fields for matters based on practice area.",
+            "requirements": [
+              "Firm administrators can define custom fields (Text, Number, Date, Dropdown, Checkbox).",
+              "Custom fields can be associated with specific Practice Areas.",
+              "Custom fields appear in the Matter Creation form when the relevant Practice Area is selected.",
+              "Custom fields are displayed in the Matter Detail view.",
+              "Ability to filter and sort matters based on custom field values on the Matter Dashboard.",
+              "Ability to include custom fields in reports.",
+              "Permissions control who can define and edit custom fields."
+            ],
+            "user_story": "As a firm specializing in real estate law, I want to add custom fields like 'Property Address' and 'Closing Date' to my matters.",
+            "acceptance_criteria": [
+              "Admin can create and associate custom fields with practice areas.",
+              "Fields appear correctly in creation and detail views based on practice area.",
+              "Matters can be filtered using custom field values."
+            ]
+          },
+          {
+            "id": "CM-010",
+            "title": "Matter Templates",
+            "description": "Allow firms to create templates for new matters based on practice area.",
+            "requirements": [
+              "Firm administrators can create Matter Templates.",
+              "Templates can pre-define: Default Status, Common Custom Field values, Initial Task Lists, Associated Document Folders.",
+              "When creating a new matter, users can select an available template based on the chosen Practice Area.",
+              "Selecting a template pre-fills the specified fields and creates initial tasks/folders.",
+              "Users can override template defaults during matter creation."
+            ],
+            "user_story": "As a firm administrator, I want to create matter templates for common case types to ensure consistency and save time during setup.",
+            "acceptance_criteria": [
+              "Admin can create, edit, and delete templates.",
+              "Templates correctly pre-fill data and create associated items during matter creation.",
+              "Users can choose not to use a template."
+            ]
+          }
+        ],
+        "ui_ux_requirements": [
+          "Interface should be clean, professional, and intuitive, minimizing clicks.",
+          "Consistent use of Material-UI components and the established theme.",
+          "Clear visual hierarchy on the Matter Detail page.",
+          "Responsive design for access on tablets and desktops.",
+          "Use of visual cues (badges, icons, color-coding) for status, priority, etc.",
+          "Loading states (skeletons) should be used for data-heavy sections.",
+          "Error messages should be user-friendly and informative."
+        ],
+        "data_requirements": [
+          "Matter Entity: ID, Name, Number, Status, OpenDate, CloseDate, Description, PracticeAreaID, ClientID, ResponsibleAttorneyID, BillingType, RetainerAmount, SOLDate, etc.",
+          "Task Entity: ID, MatterID, Title, Description, DueDate, AssigneeID, Priority, Status, EstimatedTime, IsBillable, etc.",
+          "Note Entity: ID, MatterID, AuthorID, Timestamp, Content, Tags.",
+          "ActivityLog Entity: ID, MatterID, UserID, Timestamp, ActionType, Details.",
+          "CustomFieldDefinition Entity: ID, Name, Type, PracticeAreaID.",
+          "CustomFieldValue Entity: ID, MatterID, FieldDefinitionID, Value.",
+          "Relationships defined between Matters, Clients, Users, Tasks, Documents, Notes, Events, Invoices." ,
+          "Data validation rules enforced at API level (Zod schemas)."
+        ],
+        "non_functional_requirements": [
+          {"type": "Performance", "requirement": "Matter list filtering/sorting < 1 second."},
+          {"type": "Performance", "requirement": "Matter detail page loads primary content < 2 seconds."},
+          {"type": "Security", "requirement": "Role-based access control enforced for all matter data access."},
+          {"type": "Security", "requirement": "All changes logged in an immutable audit trail."},
+          {"type": "Scalability", "requirement": "System supports up to 50,000 matters per firm."},
+          {"type": "Usability", "requirement": "Core matter creation and viewing requires minimal training."},
+          {"type": "Reliability", "requirement": "Conflict checking must be accurate and reliable."}
+        ],
+        "integration_points": [
+          "Client Management (CRM): Linking matters to clients.",
+          "Document Management: Associating documents with matters.",
+          "Time Tracking: Logging time against matters.",
+          "Billing & Invoicing: Generating invoices based on matter data.",
+          "Scheduling & Calendar: Linking events and deadlines to matters.",
+          "Reporting & Analytics: Using matter data for reports.",
+          "Client Portal: Displaying matter information to clients.",
+          "Contact Management: Linking contacts (opposing counsel, etc.) to matters.",
+          "External Calendars: Syncing matter deadlines/events."
+        ],
+        "future_considerations": [
+          "Advanced workflow automation based on matter status changes.",
+          "Deeper integration with court docketing systems.",
+          "Automated document generation based on matter data."
+        ],
+        "open_issues": [
+          "Finalize the list of default Practice Areas and Matter Statuses.",
+          "Define specific rules for conflict check sensitivity levels."
+        ]
+      }
+    },
+    {
+      "feature": "Document Management",
+      "prd": {
+        "version": "1.0",
+        "date": "2023-10-27",
+        "status": "Draft",
+        "introduction": "This document outlines the detailed product requirements for the Document Management System (DMS) feature within the LegalEase platform. It provides secure storage, organization, retrieval, and collaboration capabilities for all legal documents.",
+        "goals": [
+          "Provide secure, centralized cloud storage for all firm and client documents.",
+          "Enable efficient organization of documents through folders, tags, and metadata.",
+          "Facilitate quick retrieval of documents via robust search capabilities.",
+          "Support document version control and history tracking.",
+          "Enable secure sharing of documents internally and externally (with clients).",
+          "Integrate seamlessly with Matter Management.",
+          "Ensure compliance with data security and retention policies."
+        ],
+        "user_roles_permissions": [
+          {"role": "Attorney/Paralegal/Legal Assistant", "permissions": "Upload, view, edit metadata, organize, version, share documents within assigned matters. Access to firm-wide templates."},
+          {"role": "Administrator", "permissions": "Full CRUD access to all documents and folders, manage firm-wide settings (tags, categories, templates, retention policies), manage permissions."},
+          {"role": "Client (via Portal)", "permissions": "View/download documents explicitly shared with them, potentially upload documents to specific matters if enabled."},
+          {"role": "Billing Specialist", "permissions": "Typically read-only access if needed for verification."}
+        ],
+        "functional_requirements": [
+          {
+            "id": "DM-001",
+            "title": "Secure Cloud Storage",
+            "description": "Store all uploaded documents securely in the cloud.",
+            "requirements": [
+              "Utilize AWS S3 for primary storage.",
+              "All documents encrypted at rest using AES-256.",
+              "All documents transferred via HTTPS/TLS 1.3.",
+              "Storage segregated logically per tenant (law firm).",
+              "Regular backups of document metadata and pointers (S3 handles object redundancy)."
+            ],
+            "acceptance_criteria": [
+              "Documents are inaccessible directly via S3 URL without proper authentication/signed URL.",
+              "Encryption keys are managed securely.",
+              "Data residency requirements met based on configuration (if applicable)."
+            ]
+          },
+          {
+            "id": "DM-002",
+            "title": "Document Upload",
+            "description": "Allow users to upload documents into the system.",
+            "requirements": [
+              "Support upload via drag-and-drop interface.",
+              "Support upload via traditional file picker.",
+              "Allow multi-file uploads.",
+              "Display upload progress for each file.",
+              "Client-side validation for file size limits (configurable by admin, e.g., 100MB default).",
+              "Client-side validation for allowed file types (configurable, e.g., PDF, DOCX, XLSX, JPG, PNG, MSG, EML, common media files).",
+              "Server-side validation of size and type.",
+              "Automatic virus scanning upon upload completion.",
+              "During upload or immediately after, prompt user for metadata (DM-004).",
+              "Ability to associate documents with a specific Matter during upload.",
+              "Ability to upload directly to a specific folder."
+            ],
+            "user_story": "As a legal assistant, I want to easily upload multiple case documents at once and associate them with the correct matter.",
+            "acceptance_criteria": [
+              "Drag-and-drop works reliably.",
+              "Progress indicators are accurate.",
+              "Invalid files (size/type) are rejected with clear messages.",
+              "Virus scan prevents infected files from being fully processed.",
+              "Metadata prompt appears after successful upload."
+            ]
+          },
+          {
+            "id": "DM-003",
+            "title": "Organization: Folders & Tags",
+            "description": "Provide mechanisms for organizing documents.",
+            "requirements": [
+              "Support a hierarchical folder structure.",
+              "Ability to create, rename, move, and delete folders (permission dependent).",
+              "Folders can be created globally or within specific Matters.",
+              "Option to automatically create standard subfolders when a matter is created (via Matter Templates).",
+              "Support for applying multiple tags to documents.",
+              "Administrators can manage a firm-wide list of suggested tags.",
+              "Users can create new tags on the fly (configurable).",
+              "Documents inherit permissions from their parent folder, with override capability.",
+              "Ability to view documents by folder structure or filter by tags.",
+              "Visual indicators for folders/documents shared with clients."
+            ],
+            "user_story": "As a paralegal, I want to organize documents within matter-specific folders (e.g., Pleadings, Discovery, Correspondence) and tag important documents for quick filtering.",
+            "acceptance_criteria": [
+              "Folder hierarchy is displayed correctly.",
+              "Moving a folder moves all its contents.",
+              "Tags can be added/removed easily.",
+              "Filtering by tags updates the document list instantly."
+            ]
+          },
+          {
+            "id": "DM-004",
+            "title": "Document Metadata",
+            "description": "Capture and manage metadata associated with each document.",
+            "requirements": [
+              "Standard metadata fields: File Name, Document Title (editable), Author (uploader), Upload Date, Last Modified Date, File Size, File Type.",
+              "Customizable metadata fields based on Document Type (configurable by admin).",
+              "Required fields: Association with at least one Matter (can be 'Firm General').",
+              "Optional fields: Document Date, Description, Custom Tags, Status (Draft, Final, Filed).",
+              "Ability to edit metadata after upload (permission dependent).",
+              "Metadata used for searching and filtering (DM-007)."
+            ],
+            "user_story": "As an attorney, I want to add specific metadata like 'Document Date' and 'Status' to my uploaded files for better organization and search.",
+            "acceptance_criteria": [
+              "Metadata is saved correctly upon upload.",
+              "Metadata edits are reflected immediately.",
+              "Custom fields appear based on selected Document Type."
+            ]
+          },
+          {
+            "id": "DM-005",
+            "title": "Document Version Control",
+            "description": "Track and manage different versions of a document.",
+            "requirements": [
+              "When uploading a file with the same name into the same location, prompt the user to either 'Replace' (create new version) or 'Keep Both' (rename new file).",
+              "If 'Replace' is chosen, the old file becomes a previous version.",
+              "Maintain a history of all previous versions for each document.",
+              "Display version history including: Version Number, Author, Timestamp, optional user comments.",
+              "Ability to view/preview previous versions.",
+              "Ability to download previous versions.",
+              "Ability to restore a previous version as the current version (permission dependent).",
+              "Current version is always clearly marked.",
+              "Storage optimization for versions (e.g., differential storage if feasible via S3 versioning)."
+            ],
+            "user_story": "As a paralegal updating a contract draft, I want the system to save the previous version automatically so I can revert if needed.",
+            "acceptance_criteria": [
+              "Version history is accurate and complete.",
+              "Users can easily view and download previous versions.",
+              "Restoring a version updates the current document correctly.",
+              "Version comments are saved."
+            ]
+          },
+          {
+            "id": "DM-006",
+            "title": "Document Preview & Viewing",
+            "description": "Allow users to view documents within the application without downloading.",
+            "requirements": [
+              "In-app previewer for common file types: PDF, DOC/DOCX, XLS/XLSX, PPT/PPTX, common image formats (JPG, PNG, GIF), common text formats (TXT, CSV), EML, MSG.",
+              "For unsupported types, provide metadata view and download option only.",
+              "PDF viewer should support: zooming, panning, page navigation, text selection, basic annotations (highlight, comment - future enhancement).",
+              "Image viewer should support: zooming, panning, rotation.",
+              "Previewer should load quickly (target < 3 seconds for files < 10MB).",
+              "Secure viewing: Prevent easy copying/saving of content if permissions restrict it (e.g., for client portal view).",
+              "Display document metadata alongside the preview."
+            ],
+            "user_story": "As an attorney, I want to quickly preview documents related to a case directly in LegalEase without having to download each file.",
+            "acceptance_criteria": [
+              "Supported file types render correctly in the previewer.",
+              "Basic viewer controls (zoom, navigate) function smoothly.",
+              "Preview loads within performance targets."
+            ]
+          },
+          {
+            "id": "DM-007",
+            "title": "Document Search",
+            "description": "Enable users to find documents quickly using search.",
+            "requirements": [
+              "Utilize Elasticsearch for indexing and search.",
+              "Full-text search across document content (requires OCR for images/scanned PDFs - DM-009).",
+              "Search across all metadata fields (Title, Description, Tags, Custom Fields, etc.).",
+              "Global search bar searches across all accessible documents.",
+              "Contextual search within a specific Matter or folder.",
+              "Advanced search options/filters:",
+              "  - Boolean operators (AND, OR, NOT).",
+              "  - Exact phrase matching.",
+              "  - Filtering by Matter, Author, Date Range (Upload/Modified/Document Date), File Type, Tags.",
+              "Search results display relevant snippets with highlighted keywords.",
+              "Results ranked by relevance.",
+              "Search results respect user permissions (only show accessible documents).",
+              "Search performance target: return results within 1-2 seconds."
+            ],
+            "user_story": "As a researcher, I need to find all documents containing a specific phrase across multiple matters within a defined date range.",
+            "acceptance_criteria": [
+              "Full-text search returns accurate results from document content.",
+              "Metadata filtering works correctly.",
+              "Search results only include documents the user has permission to view.",
+              "Performance targets are met for typical queries."
+            ]
+          },
+          {
+            "id": "DM-008",
+            "title": "Document Sharing & Permissions",
+            "description": "Control access to documents and enable secure sharing.",
+            "requirements": [
+              "Role-based access control (RBAC) applied by default.",
+              "Permissions can be set at Folder and individual Document levels.",
+              "Permission levels: View, Edit Metadata, Edit Content (Version), Manage (change permissions, delete).",
+              "Permissions can be assigned to specific users or groups/roles within the firm.",
+              "Ability to share documents/folders securely with clients via the Client Portal.",
+              "Client sharing options: View only, View & Download, time-limited access.",
+              "Generate secure, expiring links for sharing with external parties (non-portal users) - requires careful security review.",
+              "Audit log tracks all sharing actions and access attempts.",
+              "Clear UI indicators show which documents/folders are shared and with whom."
+            ],
+            "user_story": "As an attorney, I need to share specific discovery documents with my client securely through the portal, ensuring they can only view and download them.",
+            "acceptance_criteria": [
+              "Permissions are enforced correctly for viewing and actions.",
+              "Client portal sharing reflects the permissions set by the firm user.",
+              "Secure link generation includes expiry and access logging.",
+              "UI clearly indicates sharing status."
+            ]
+          },
+          {
+            "id": "DM-009",
+            "title": "OCR Processing",
+            "description": "Perform Optical Character Recognition on scanned PDFs and images to enable full-text search.",
+            "requirements": [
+              "Automatically trigger OCR processing for uploaded image files (JPG, PNG, TIFF) and image-based PDFs.",
+              "OCR process runs asynchronously in the background.",
+              "Extracted text is stored and indexed in Elasticsearch.",
+              "Support for multiple languages (configurable, English default).",
+              "Indicate OCR status (Pending, Processing, Complete, Failed) on the document.",
+              "Ability to manually trigger OCR for specific documents.",
+              "Accuracy target: 95%+ for standard quality scans."
+            ],
+            "user_story": "As a paralegal, I want the system to automatically read the text from scanned documents so I can search for keywords within them later.",
+            "acceptance_criteria": [
+              "OCR is triggered for relevant file types upon upload.",
+              "Extracted text is searchable via full-text search.",
+              "OCR status is displayed accurately.",
+              "Process handles common scan qualities reasonably well."
+            ]
+          },
+          {
+            "id": "DM-010",
+            "title": "Document Templates",
+            "description": "Allow firms to create and manage reusable document templates.",
+            "requirements": [
+              "Administrators can upload and manage firm-wide document templates (e.g., engagement letters, standard motions).",
+              "Templates can contain placeholder fields (e.g., <<ClientName>>, <<MatterName>>, <<CurrentDate>>).",
+              "Users can generate new documents based on these templates.",
+              "When generating, the system prompts the user to fill in placeholder values or automatically pulls data from the associated Matter/Client.",
+              "Generated documents are saved as regular documents (e.g., DOCX or PDF) within the selected Matter.",
+              "Templates can be organized by Practice Area or category."
+            ],
+            "user_story": "As a firm administrator, I want to upload our standard engagement letter template so attorneys can quickly generate personalized versions for new clients.",
+            "acceptance_criteria": [
+              "Admin can manage templates.",
+              "Users can select templates and generate documents.",
+              "Placeholders are correctly replaced with matter/client data or user input.",
+              "Generated document is saved to the correct location."
+            ]
+          },
+          {
+              "id": "DM-011",
+              "title": "Audit Logging",
+              "description": "Track all significant actions performed on documents and folders.",
+              "requirements": [
+                  "Log events: Upload, View, Download, Metadata Edit, Content Update (New Version), Rename, Move, Delete, Permission Change, Sharing Action, Restore Version.",
+                  "Log details: Action, Document/Folder ID, User performing action, Timestamp, IP Address, Changes made (if applicable).",
+                  "Audit logs accessible to administrators.",
+                  "Logs should be immutable and retained according to firm policy.",
+                  "Ability to filter logs by document, user, date range, action type."
+              ],
+              "user_story": "As a compliance officer, I need a detailed audit trail of all document activities to meet regulatory requirements and internal policies.",
+              "acceptance_criteria": [
+                  "All specified actions are logged accurately.",
+                  "Log details are comprehensive.",
+                  "Administrators can filter and view logs."
+              ]
+          }
+        ],
+        "ui_ux_requirements": [
+          "Clean, intuitive interface resembling familiar file explorers.",
+          "Clear visual distinction between folders and files.",
+          "Easy drag-and-drop interactions for uploads and organization.",
+          "Context menus for quick actions (right-click).",
+          "Consistent iconography for file types and actions.",
+          "Responsive design for tablet use."
+        ],
+        "data_requirements": [
+          "Document Entity: ID, MatterID, FolderID, Name, Title, Description, S3Key, FileType, Size, Status, UploaderID, UploadTimestamp, LastModifiedTimestamp, DocumentDate, IsOCRProcessed, etc.",
+          "DocumentVersion Entity: ID, DocumentID, VersionNumber, S3Key, AuthorID, Timestamp, Comments.",
+          "Folder Entity: ID, ParentFolderID, MatterID, Name, CreatorID, Timestamp.",
+          "Tag Entity: ID, Name.",
+          "DocumentTag Link Table.",
+          "DocumentPermission Entity: ID, DocumentID/FolderID, UserID/RoleID, PermissionLevel.",
+          "MetadataDefinition Entity (for custom types).",
+          "MetadataValue Entity.",
+          "Relationships between documents, matters, folders, users, versions."
+        ],
+        "non_functional_requirements": [
+          {"type": "Performance", "requirement": "Document search results < 2 seconds."},
+          {"type": "Performance", "requirement": "Document preview loads < 3 seconds (for files < 10MB)."},
+          {"type": "Performance", "requirement": "Upload speed dependent on user connection, but processing should be efficient."},
+          {"type": "Security", "requirement": "Encryption at rest (AES-256) and in transit (TLS 1.3)."},
+          {"type": "Security", "requirement": "Strict permission enforcement on all operations."},
+          {"type": "Security", "requirement": "Virus scanning on all uploads."},
+          {"type": "Scalability", "requirement": "Support 100,000+ documents per firm."},
+          {"type": "Reliability", "requirement": "Document integrity ensured through S3 versioning and backups."},
+          {"type": "Reliability", "requirement": "OCR processing success rate > 95%."}
+        ],
+        "integration_points": [
+          "Matter Management: Linking documents to matters, creating matter folders.",
+          "Client Portal: Securely sharing/displaying documents to clients.",
+          "Time Tracking: Linking time entries to document review.",
+          "Task Management: Linking tasks to specific documents.",
+          "Email Integration: Saving emails/attachments as documents.",
+          "E-signature Services: Sending documents for signature and receiving signed copies."
+        ],
+        "future_considerations": [
+          "Advanced document comparison (redlining).",
+          "Collaborative editing (integration with Office 365/Google Workspace).",
+          "AI-powered clause detection and analysis.",
+          "Workflow automation triggered by document status/type.",
+          "Email integration to directly save emails/attachments."
+        ],
+        "open_issues": [
+          "Define the specific list of initially supported file types for preview.",
+          "Finalize configuration options for file size limits and allowed types.",
+          "Determine strategy for handling extremely large files (over 1GB)."
+        ]
+      }
+    },
+    {
+      "feature": "Time Tracking",
+      "prd": {
+        "version": "1.0",
+        "date": "2023-10-27",
+        "status": "Draft",
+        "introduction": "This document outlines the detailed product requirements for the Time Tracking feature within the LegalEase platform. This feature enables legal professionals to accurately and efficiently capture time spent on client matters, maximizing billable hours and providing data for invoicing and analysis.",
+        "goals": [
+          "Provide multiple intuitive methods for capturing time (timers, manual entry).",
+          "Ensure accurate recording of billable and non-billable time.",
+          "Minimize administrative overhead associated with time tracking.",
+          "Integrate seamlessly with Matter Management and Billing.",
+          "Support various billing rates and activity codes.",
+          "Enable easy review, editing, and management of time entries.",
+          "Facilitate compliance with billing guidelines (e.g., UTBMS/LEDES)."
+        ],
+        "user_roles_permissions": [
+          {"role": "Attorney/Paralegal/Legal Assistant", "permissions": "Start/stop timers, create/edit/delete own time entries, submit timesheets (if applicable)."},
+          {"role": "Administrator", "permissions": "View/edit/delete all time entries within the firm, manage billing codes, configure time tracking settings (rounding rules, etc.)."},
+          {"role": "Billing Specialist", "permissions": "View all time entries, potentially edit entries before invoicing (configurable permission)."},
+          {"role": "Managing Partner/Supervisor", "permissions": "View team time entries, approve timesheets (if workflow enabled)."}
+        ],
+        "functional_requirements": [
+          {
+            "id": "TT-001",
+            "title": "Global Timer",
+            "description": "Provide a persistent, easily accessible timer for real-time tracking.",
+            "requirements": [
+              "Timer controls (Start/Pause/Stop) accessible from the main application header/navigation bar.",
+              "When starting, prompt for required info: Associated Matter (searchable dropdown), optional Activity Description.",
+              "Display running time (HH:MM:SS).",
+              "Timer state persists across page navigations within the application.",
+              "Ability to run multiple timers simultaneously (optional, requires clear UI to switch between/manage). If single timer, pausing current timer should be required before starting another.",
+              "Upon stopping the timer, present a confirmation/completion modal.",
+              "Completion modal should display: Elapsed Time (editable based on rounding rules), Associated Matter (editable), Activity Description (required, may pre-fill from start prompt), Billable toggle (defaults based on Matter/Activity), optional Billing/Activity Code selection.",
+              "Applying rounding rules (configurable by admin, e.g., round up to nearest 6 minutes / 0.1 hours).",
+              "Saving the entry creates a time record linked to the user and matter."
+            ],
+            "user_story": "As an attorney frequently switching tasks, I want a readily available timer I can quickly start and stop, associating the time with the correct matter without navigating away from my current screen.",
+            "acceptance_criteria": [
+              "Timer starts/stops instantly.",
+              "Running time is accurate.",
+              "State persists correctly during navigation.",
+              "Completion modal pre-fills correctly and applies rounding rules.",
+              "Saved entry appears in the timesheet/matter billing."
+            ]
+          },
+          {
+            "id": "TT-002",
+            "title": "Manual Time Entry",
+            "description": "Allow users to manually enter time entries for past activities.",
+            "requirements": [
+              "Accessible from a dedicated 'Time Tracking' section or within a Matter's billing tab.",
+              "Form fields:",
+              "  - User (defaults to logged-in user, admin/billing can select other users).",
+              "  - Date (required, calendar picker, defaults to today).",
+              "  - Duration (required, HH:MM format or decimal hours) OR Start/End Times (optional, calculates duration automatically).",
+              "  - Associated Matter (required, searchable dropdown).",
+              "  - Activity Description (required, text area).",
+              "  - Billable toggle (required).",
+              "  - Billing/Activity Code (optional, dropdown linked to firm settings, UTBMS/LEDES compliant).",
+              "Real-time validation of inputs.",
+              "Ability to save and add another entry quickly.",
+              "Prevent saving entries with zero duration."
+            ],
+            "user_story": "As a paralegal who forgot to run the timer yesterday, I want to manually enter the time I spent researching a specific matter.",
+            "acceptance_criteria": [
+              "Duration is calculated correctly from start/end times.",
+              "Required fields are enforced.",
+              "Selecting a Matter populates relevant billing codes.",
+              "Saved entry appears correctly in lists."
+            ]
+          },
+          {
+            "id": "TT-003",
+            "title": "Timesheet View & Management",
+            "description": "Provide a consolidated view of time entries for review and editing.",
+            "requirements": [
+              "Dedicated 'Timesheet' or 'Time Entries' page.",
+              "Display time entries in a list or calendar view.",
+              "Default view shows logged-in user's entries for the current week/day.",
+              "Ability to filter entries by: Date Range, User (for admins/managers), Matter, Client, Billable Status, Billing Code.",
+              "Display key info for each entry: Date, User, Matter, Duration, Description, Billable Status, Billing Code, Invoice Status (Unbilled, Billed, Paid).",
+              "Daily and weekly totals for duration (billable vs. non-billable).",
+              "Ability to edit existing entries (inline or via modal, permission dependent).",
+              "Ability to delete entries (permission dependent).",
+              "Bulk editing capabilities (e.g., change billable status for multiple entries).",
+              "Clear indication of entries that have already been invoiced (non-editable or requires specific permissions/warnings)."
+            ],
+            "user_story": "As an attorney at the end of the week, I want to review all my time entries, make corrections, and see my total billable hours.",
+            "acceptance_criteria": [
+              "Filters update the view accurately.",
+              "Totals are calculated correctly.",
+              "Editing/deleting entries works as expected based on permissions.",
+              "Invoiced entries are clearly marked and protected from accidental edits."
+            ]
+          },
+          {
+            "id": "TT-004",
+            "title": "Billing/Activity Codes",
+            "description": "Support the use of standard or custom activity codes for time entries.",
+            "requirements": [
+              "Administrators can manage a list of Billing/Activity codes.",
+              "Support for standard code sets (e.g., UTBMS, LEDES).",
+              "Ability to define custom codes.",
+              "Codes can be linked to specific Matters or Practice Areas as defaults.",
+              "Codes available for selection during time entry (timer completion or manual entry).",
+              "Codes included in time entry data for reporting and invoicing.",
+              "Filtering/reporting based on codes."
+            ],
+            "user_story": "As a firm administrator working with corporate clients requiring LEDES billing, I need to set up the standard LEDES activity codes for attorneys to select when entering time.",
+            "acceptance_criteria": [
+              "Admin can manage code lists.",
+              "Codes appear correctly in dropdowns during time entry.",
+              "Selected codes are saved with the time entry record.",
+              "Reports can be filtered/grouped by code."
+            ]
+          },
+          {
+            "id": "TT-005",
+            "title": "Billing Rates Association",
+            "description": "Associate appropriate billing rates with time entries.",
+            "requirements": [
+              "Time entries inherit the billing rate based on a hierarchy:",
+              "  1. Specific rate override on the Matter for the User.",
+              "  2. Default rate on the Matter.",
+              "  3. Default rate for the User.",
+              "  4. Default rate for the User's Role.",
+              "  5. Firm default rate.",
+              "The applicable rate (or $0.00 for non-billable) should be stored with the time entry record at the time of creation.",
+              "Ability for administrators/billing users to see the applied rate for each entry.",
+              "Changes to default rates should not retroactively change rates on existing time entries (unless explicitly intended via a bulk update tool - future enhancement)."
+            ],
+            "user_story": "As a billing specialist, I need the system to automatically apply the correct hourly rate to each time entry based on the attorney and matter involved.",
+            "acceptance_criteria": [
+              "Correct rate is applied based on the defined hierarchy.",
+              "Rate is stored with the time entry record.",
+              "Rate changes do not affect past entries."
+            ]
+          },
+          {
+            "id": "TT-006",
+            "title": "Time Tracking Settings",
+            "description": "Allow administrators to configure firm-wide time tracking rules.",
+            "requirements": [
+              "Admin settings page for Time Tracking.",
+              "Configure timer rounding rules (e.g., no rounding, nearest 0.1 hour, nearest 0.25 hour, always round up).",
+              "Set default billable status for new entries.",
+              "Configure default activity codes.",
+              "Enable/disable multiple simultaneous timers.",
+              "Set minimum/maximum time entry duration.",
+              "Configure timesheet submission/approval workflow (optional future enhancement)."
+            ],
+            "user_story": "As a firm administrator, I want to set the firm's standard time increment to 6 minutes (0.1 hours) and ensure all timers round up accordingly.",
+            "acceptance_criteria": [
+              "Rounding rules configured by admin are applied correctly by timers and manual entry.",
+              "Other configured defaults are applied correctly."
+            ]
+          },
+          {
+              "id": "TT-007",
+              "title": "Offline Time Tracking (Mobile/PWA)",
+              "description": "Allow users to track time even when offline, syncing when connectivity is restored.",
+              "requirements": [
+                  "If using a mobile app or PWA, timer functionality should work offline.",
+                  "Manual time entries created offline should be queued.",
+                  "Queued entries should sync automatically when the application detects an internet connection.",
+                  "Clear UI indication of sync status (syncing, synced, pending sync).",
+                  "Conflict resolution mechanism if offline entries conflict with server data (e.g., prioritize server or user choice)."
+              ],
+              "user_story": "As an attorney working on a flight without Wi-Fi, I want to track my time using the mobile app and have it sync automatically once I land.",
+              "acceptance_criteria": [
+                  "Timer runs and entries can be saved offline.",
+                  "Data syncs reliably upon reconnection.",
+                  "UI clearly indicates sync status."
+              ]
+          },
+          {
+              "id": "TT-008",
+              "title": "Passive Time Capture (Future Consideration)",
+              "description": "Automatically suggest time entries based on user activity within the platform.",
+              "requirements": [
+                  "Monitor activities like document viewing/editing duration, email composition time (if integrated), time spent in specific matter views.",
+                  "Present suggested time entries to the user for confirmation/editing.",
+                  "User must explicitly approve suggested entries before they become actual time records.",
+                  "Ability to configure sensitivity and types of activities monitored."
+              ],
+              "user_story": "As a busy lawyer, I'd like the system to suggest time entries based on my work within LegalEase, reducing the chance of missing billable time.",
+              "acceptance_criteria": [
+                  "Suggestions are relevant to user activity.",
+                  "User confirmation workflow is clear.",
+                  "Does not create entries automatically without approval."
+              ]
+          }
+        ],
+        "ui_ux_requirements": [
+          "Timer should be instantly accessible and highly visible.",
+          "Manual entry form should be quick and efficient to complete.",
+          "Timesheet view must be clear, easy to scan, and provide obvious totals.",
+          "Editing time entries should be straightforward.",
+          "Consistent display of duration (e.g., HH:MM or decimal based on firm preference).",
+          "Minimal clicks required for core actions (start/stop timer, save entry)."
+        ],
+        "data_requirements": [
+          "TimeEntry Entity: ID, UserID, MatterID, Date, StartTime (optional), EndTime (optional), Duration (decimal hours, required), Description, IsBillable, BillingCodeID (optional), RateApplied, InvoiceID (nullable), Status (Unbilled, Billed, Paid), CreationTimestamp, LastModifiedTimestamp.",
+          "BillingCode Entity: ID, CodeValue, Description, CodeSet (e.g., UTBMS, Custom).",
+          "Relationships between TimeEntry, User, Matter, Invoice, BillingCode."
+        ],
+        "non_functional_requirements": [
+          {"type": "Performance", "requirement": "Timer start/stop response time < 500ms."},
+          {"type": "Performance", "requirement": "Timesheet view loads < 2 seconds (for typical weekly view)."},
+          {"type": "Accuracy", "requirement": "Timer duration calculation must be precise."},
+          {"type": "Accuracy", "requirement": "Rounding rules must be applied consistently."},
+          {"type": "Reliability", "requirement": "Offline tracking sync must be reliable."},
+          {"type": "Usability", "requirement": "Core time tracking functions should be intuitive with minimal training."}
+        ],
+        "integration_points": [
+          "Matter Management: Associating entries with matters.",
+          "Billing & Invoicing: Pulling unbilled time entries for invoice generation.",
+          "Reporting & Analytics: Providing data for productivity and financial reports.",
+          "Calendar: Potential to generate time entries from calendar events.",
+          "Document Management: Linking entries to document review activity.",
+          "Payroll Systems (Future): Exporting time data for payroll."
+        ],
+        "future_considerations": [
+          "Timesheet submission and approval workflows.",
+          "Passive time capture based on application activity.",
+          "Integration with external calendars to suggest time entries.",
+          "More advanced bulk editing capabilities.",
+          "Budget tracking against matter time."
+        ],
+        "open_issues": [
+          "Finalize the exact implementation of multiple simultaneous timers (if adopted).",
+          "Define the default set of UTBMS codes to pre-populate.",
+          "Specify conflict resolution strategy for offline sync."
+        ]
+      }
+    },
+    {
+      "feature": "Billing and Invoicing",
+      "prd": {
+        "version": "1.0",
+        "date": "2023-10-27",
+        "status": "Draft",
+        "introduction": "This document outlines the detailed product requirements for the Billing and Invoicing feature within the LegalEase platform. This feature enables law firms to generate professional invoices based on tracked time and expenses, manage client payments, and handle trust accounting.",
+        "goals": [
+          "Automate and streamline the invoice creation process.",
+          "Support various billing arrangements (hourly, flat fee, contingency).",
+          "Ensure accurate reflection of billable time and expenses on invoices.",
+          "Provide customizable invoice templates.",
+          "Facilitate efficient payment collection, including online payments.",
+          "Manage trust accounting in compliance with regulations.",
+          "Provide clear visibility into accounts receivable and billing status."
+        ],
+        "user_roles_permissions": [
+          {"role": "Billing Specialist/Administrator", "permissions": "Full CRUD access to invoices, payments, trust accounts. Manage templates and settings. Generate batch invoices."},
+          {"role": "Attorney", "permissions": "View invoices for assigned matters, potentially generate draft invoices, view payment status."},
+          {"role": "Managing Partner", "permissions": "View all invoices and billing reports, approve invoices (if workflow enabled)."},
+          {"role": "Client (via Portal)", "permissions": "View own invoices, view payment history, make online payments."}
+        ],
+        "functional_requirements": [
+          {
+            "id": "BI-001",
+            "title": "Invoice Generation",
+            "description": "Create draft and final invoices based on unbilled work and expenses.",
+            "requirements": [
+              "Ability to generate invoices for a single Matter/Client or in batches.",
+              "Invoice generation wizard:",
+              "  - Select Client(s)/Matter(s).",
+              "  - Specify Date Range for billable items.",
+              "  - Review and select unbilled Time Entries.",
+              "  - Review and select unbilled Expenses.",
+              "  - Option to include non-billable time/expenses (e.g., for transparency).",
+              "  - Apply discounts (percentage or fixed amount) at matter or invoice level.",
+              "  - Add manual line items (adjustments, fixed fees).",
+              "Preview draft invoice before finalizing.",
+              "Support for different billing models:",
+              "  - Hourly: Pulls selected time entries, calculates based on applied rates.",
+              "  - Flat Fee: Allows creating invoices for fixed amounts or installments.",
+              "  - Contingency: Track settlement/award amounts and calculate fees.",
+              "  - Hybrid: Combine different types on one invoice.",
+              "Generate unique, sequential invoice numbers (configurable format).",
+              "Finalizing an invoice marks included time/expenses as 'Billed' and generates a PDF.",
+              "Ability to save invoices as drafts.",
+              "Ability to regenerate or clone existing invoices."
+            ],
+            "user_story": "As a billing specialist, I want to generate invoices for all matters with unbilled time from last month in one batch, review them, and finalize them.",
+            "acceptance_criteria": [
+              "Invoice accurately reflects selected time entries and expenses.",
+              "Calculations (totals, taxes, discounts) are correct.",
+              "Invoice numbers are unique and sequential.",
+              "Included time/expenses are marked as 'Billed' and excluded from future invoice generation runs for the same period.",
+              "PDF invoice is generated correctly based on the template."
+            ]
+          },
+          {
+            "id": "BI-002",
+            "title": "Invoice Templates & Customization",
+            "description": "Allow firms to customize the appearance and content of their invoices.",
+            "requirements": [
+              "Provide several standard professional invoice templates.",
+              "Administrators can customize templates:",
+              "  - Upload firm logo.",
+              "  - Adjust color schemes.",
+              "  - Configure displayed columns for time/expense entries (e.g., show user, activity code).",
+              "  - Add custom header/footer text (e.g., payment instructions, terms).",
+              "  - Configure date/number formats.",
+              "  - Select default template for the firm.",
+              "Ability to override template on a per-invoice basis.",
+              "Placeholders for firm details, client details, invoice specifics.",
+              "Support for including detailed time entry descriptions or summaries."
+            ],
+            "user_story": "As a firm administrator, I want to customize our invoice template to include our logo, specific payment terms, and hide the billing codes from the client view.",
+            "acceptance_criteria": [
+              "Admin can modify templates via a user-friendly interface.",
+              "Generated PDF invoices reflect the selected template and customizations.",
+              "Placeholders are populated correctly."
+            ]
+          },
+          {
+            "id": "BI-003",
+            "title": "Invoice Management & Tracking",
+            "description": "View, track status, and manage invoices.",
+            "requirements": [
+              "Dedicated 'Billing' or 'Invoices' section.",
+              "List view of all invoices.",
+              "Filter invoices by: Status (Draft, Sent, Partial Payment, Paid, Overdue), Client, Matter, Date Range.",
+              "Sort invoices by: Invoice Date, Due Date, Client, Amount, Balance Due.",
+              "Display key info: Invoice #, Client, Matter, Date, Due Date, Amount, Balance Due, Status.",
+              "Quick actions: View PDF, Send to Client, Record Payment, Edit (if Draft), Void/Write-off (permission dependent).",
+              "Clear visual indicators for invoice status (especially overdue).",
+              "View detailed invoice page showing line items, payment history, associated matter.",
+              "Accounts Receivable (A/R) Aging report."
+            ],
+            "user_story": "As a managing partner, I want to quickly see all overdue invoices and their outstanding balances.",
+            "acceptance_criteria": [
+              "Filtering and sorting works correctly.",
+              "Invoice statuses update automatically based on payments.",
+              "A/R Aging report accurately reflects outstanding balances by age.",
+              "Actions are available based on user permissions and invoice status."
+            ]
+          },
+          {
+            "id": "BI-004",
+            "title": "Payment Recording",
+            "description": "Manually record payments received against invoices.",
+            "requirements": [
+              "Ability to record payments from the invoice list or detail view.",
+              "Payment form fields:",
+              "  - Amount Received (required, defaults to balance due).",
+              "  - Payment Date (required, defaults to today).",
+              "  - Payment Method (required, dropdown: Check, Credit Card (Manual), ACH, Wire Transfer, Cash, Trust, Other).",
+              "  - Reference Number (optional).",
+              "  - Notes (optional).",
+              "  - Deposit Account (Operating or Trust - see BI-007).",
+              "Ability to apply a single payment across multiple invoices for a client.",
+              "Handle partial payments correctly, updating the invoice balance due.",
+              "Automatically update invoice status (e.g., to 'Partial Payment' or 'Paid').",
+              "Record payment history associated with the invoice.",
+              "Generate payment receipts (optional)."
+            ],
+            "user_story": "As a billing specialist, I received a check from a client covering two invoices, and I need to record the payment, applying it correctly to both.",
+            "acceptance_criteria": [
+              "Payment amount is validated against balance due (cannot overpay unless handling credits).",
+              "Invoice balance and status update correctly after payment.",
+              "Payment history is accurately recorded.",
+              "Payment can be split across invoices."
+            ]
+          },
+          {
+            "id": "BI-005",
+            "title": "Online Payment Integration",
+            "description": "Allow clients to pay invoices online via integrated payment gateways.",
+            "requirements": [
+              "Integration with Stripe (primary) and potentially PayPal/LawPay.",
+              "Firm administrators configure gateway credentials securely.",
+              "Include 'Pay Online' button/link on PDF invoices and in the Client Portal.",
+              "Clicking the link directs client to a secure payment page hosted by the gateway or LegalEase.",
+              "Payment page displays invoice details and amount due.",
+              "Client enters payment information (Credit Card, ACH).",
+              "Process payment via the gateway API.",
+              "Receive webhook notifications from the gateway for payment success/failure.",
+              "Automatically record successful payments in LegalEase (similar to manual recording but triggered by webhook).",
+              "Update invoice status automatically.",
+              "Handle payment processing fees (configurable display/absorption).",
+              "PCI DSS compliance considerations (handled primarily by gateway integration)."
+            ],
+            "user_story": "As a client, I want to easily pay my invoice online using my credit card directly from the client portal.",
+            "acceptance_criteria": [
+              "Client can successfully navigate to the payment page.",
+              "Payment is processed securely by the gateway.",
+              "Successful payment automatically updates the invoice status and records the payment in LegalEase within minutes.",
+              "Webhook handler is robust and handles potential errors."
+            ]
+          },
+          {
+            "id": "BI-006",
+            "title": "Expense Tracking",
+            "description": "Record and manage expenses associated with matters to be billed to clients.",
+            "requirements": [
+              "Ability to add expenses, either globally or directly to a Matter.",
+              "Expense fields: Date, Matter (required), Description (required), Category (e.g., Filing Fees, Travel, Photocopies - customizable list), Amount (required), Billable toggle.",
+              "Ability to attach receipts (upload image/PDF).",
+              "Mark expenses as 'Billed' when included on an invoice.",
+              "List view for expenses with filtering/sorting.",
+              "Include unbilled expenses in the invoice generation process.",
+              "Expenses appear as separate line items on invoices."
+            ],
+            "user_story": "As a paralegal, I need to record the court filing fee for a matter and attach the receipt so it can be billed to the client on the next invoice.",
+            "acceptance_criteria": [
+              "Expenses can be added with required details and attachments.",
+              "Unbilled expenses appear correctly during invoice generation.",
+              "Expenses are marked as 'Billed' after invoicing.",
+              "Receipts are accessible from the expense record."
+            ]
+          },
+          {
+            "id": "BI-007",
+            "title": "Trust Accounting (IOLTA)",
+            "description": "Manage client funds held in trust accounts in compliance with regulations.",
+            "requirements": [
+              "Ability to define one or more Trust Accounts for the firm.",
+              "Record trust deposits (retainers) specific to a Client/Matter.",
+              "Maintain separate ledger balances for each Client/Matter within the trust account.",
+              "Ability to apply trust funds to pay invoices:",
+              "  - Requires explicit user action.",
+              "  - Transfer funds from trust ledger to operating ledger/invoice payment.",
+              "  - Prevent applying more funds than available for the specific client/matter.",
+              "Record trust disbursements (payments to third parties, refunds to client).",
+              "Strict prevention of co-mingling funds (cannot pay firm operating expenses directly from trust).",
+              "Trust account ledger reports showing all transactions (deposits, payments, disbursements) per client/matter.",
+              "Three-way reconciliation report (Trust Bank Balance vs. Trust Book Balance vs. Sum of Client Trust Ledgers).",
+              "Clear audit trail for all trust account transactions.",
+              "Warning system to prevent overdrawing a client's trust balance."
+            ],
+            "user_story": "As a firm administrator, I need to record a client's retainer payment into their trust ledger and later apply those funds to their outstanding invoice, ensuring compliance with IOLTA rules.",
+            "acceptance_criteria": [
+              "Client trust ledger balances are accurate.",
+              "Cannot apply more trust funds than available.",
+              "Trust transactions are clearly logged and auditable.",
+              "Reconciliation reports provide necessary data for bank reconciliation."
+            ]
+          },
+          {
+            "id": "BI-008",
+            "title": "Automated Reminders & Notifications",
+            "description": "Send automated reminders for overdue invoices.",
+            "requirements": [
+              "Configure automated reminder schedules (e.g., 7 days past due, 30 days past due).",
+              "Customize reminder email templates.",
+              "System automatically identifies overdue invoices and sends reminders via email.",
+              "Ability to manually trigger reminders.",
+              "Log reminder sending activity.",
+              "Option to exclude specific clients/invoices from automated reminders.",
+              "Notifications to internal staff about significantly overdue invoices."
+            ],
+            "user_story": "As a billing manager, I want the system to automatically send polite email reminders to clients whose invoices are more than 15 days overdue.",
+            "acceptance_criteria": [
+              "Reminders are sent according to the configured schedule.",
+              "Email templates are used correctly.",
+              "Sending is logged.",
+              "Exclusions are respected."
+            ]
+          },
+          {
+              "id": "BI-009",
+              "title": "Credit Balance Management",
+              "description": "Handle client overpayments or credits.",
+              "requirements": [
+                  "Ability to record an overpayment when recording a payment.",
+                  "Maintain a client-level credit balance.",
+                  "Ability to apply client credit balance to future invoices.",
+                  "Option to refund credit balance to the client (recording the disbursement).",
+                  "Credit balance clearly visible on client records and billing statements."
+              ],
+              "user_story": "As a billing specialist, when a client overpays an invoice, I need to record the overpayment as a credit and apply it to their next month's bill.",
+              "acceptance_criteria": [
+                  "Overpayments correctly increase client credit balance.",
+                  "Credits can be applied to reduce invoice balances.",
+                  "Credit balance is tracked accurately."
+              ]
+          }
+        ],
+        "ui_ux_requirements": [
+          "Invoice generation wizard should be clear and guide the user step-by-step.",
+          "Invoice templates should look professional and be easy to read.",
+          "Billing dashboard/list views should provide quick visibility into A/R status.",
+          "Trust accounting interface must be extremely clear to prevent errors.",
+          "Consistent terminology for billing actions."
+        ],
+        "data_requirements": [
+          "Invoice Entity: ID, InvoiceNumber, ClientID, MatterID, InvoiceDate, DueDate, TotalAmount, BalanceDue, Status (Draft, Sent, Partial, Paid, Void), TemplateID, Notes.",
+          "InvoiceLineItem Entity: ID, InvoiceID, Type (Time, Expense, FlatFee, Discount, Manual), Description, Quantity, Rate, Amount, AssociatedTimeEntryID (nullable), AssociatedExpenseID (nullable).",
+          "Payment Entity: ID, InvoiceID (can be nullable if applied to multiple), ClientID, PaymentDate, Amount, Method, ReferenceNumber, Notes, DepositAccountType (Operating, Trust).",
+          "Expense Entity: ID, MatterID, Date, Description, Category, Amount, IsBillable, ReceiptAttachmentURL, InvoiceID (nullable).",
+          "TrustAccount Entity: ID, FirmID, AccountName, BankName.",
+          "TrustLedger Transaction Entity: ID, TrustAccountID, ClientID, MatterID, Date, Type (Deposit, PaymentToInvoice, Disbursement, Refund), Amount, RelatedInvoiceID (nullable), RelatedPaymentID (nullable), RunningBalance.",
+          "Relationships link invoices to clients, matters, time entries, expenses, payments, and trust transactions."
+        ],
+        "non_functional_requirements": [
+          {"type": "Performance", "requirement": "Batch invoice generation for 50 matters < 30 seconds."},
+          {"type": "Performance", "requirement": "A/R Aging report generation < 5 seconds."},
+          {"type": "Accuracy", "requirement": "All financial calculations must be precise."},
+          {"type": "Security", "requirement": "Online payment integration must meet PCI DSS standards."},
+          {"type": "Security", "requirement": "Strict permissions on accessing billing and trust data."},
+          {"type": "Compliance", "requirement": "Trust accounting features must adhere to IOLTA regulations."},
+          {"type": "Reliability", "requirement": "Payment recording and status updates must be atomic and reliable."}
+        ],
+        "integration_points": [
+          "Time Tracking: Pulling unbilled time entries.",
+          "Matter Management: Associating invoices/expenses with matters.",
+          "Client Portal: Displaying invoices, accepting online payments.",
+          "Reporting & Analytics: Providing data for financial reports.",
+          "Accounting Software (QuickBooks, Xero): Syncing invoices, payments, expenses (future enhancement).",
+          "Payment Gateways (Stripe, PayPal, LawPay): Processing online payments."
+        ],
+        "future_considerations": [
+          "Direct integration with accounting software (QuickBooks, Xero).",
+          "Invoice approval workflows.",
+          "Budgeting features per matter.",
+          "Advanced reporting on realization rates.",
+          "Support for evergreen retainers."
+        ],
+        "open_issues": [
+          "Finalize the list of default expense categories.",
+          "Specify the exact workflow for handling payment processing fees.",
+          "Define detailed requirements for contingency fee calculations and tracking."
+        ]
+      }
+    },
+    {
+      "feature": "Scheduling & Calendar Management",
+      "prd": {
+        "version": "1.0",
+        "date": "2023-10-27",
+        "status": "Draft",
+        "introduction": "This document outlines the detailed product requirements for the Scheduling & Calendar Management feature within the LegalEase platform. This feature provides tools for managing appointments, court dates, deadlines, and team schedules, integrating tightly with case management.",
+        "goals": [
+          "Provide a centralized firm-wide calendar.",
+          "Enable efficient scheduling of appointments, meetings, and court appearances.",
+          "Track critical case deadlines accurately.",
+          "Prevent scheduling conflicts for users and resources.",
+          "Automate reminders for upcoming events and deadlines.",
+          "Integrate with external calendar applications.",
+          "Improve team coordination and visibility into schedules."
+        ],
+        "user_roles_permissions": [
+          {"role": "Attorney/Paralegal/Legal Assistant", "permissions": "View firm calendar, create/edit/delete own events, view/edit events for assigned matters, schedule appointments."},
+          {"role": "Administrator", "permissions": "Manage firm-wide calendar settings, manage resources, view/edit all events, manage event types and court rules."},
+          {"role": "Client (via Portal)", "permissions": "View appointments shared with them, potentially request appointments (if enabled)."}
+        ],
+        "functional_requirements": [
+          {
+            "id": "SC-001",
+            "title": "Calendar Views",
+            "description": "Display calendar events in various standard formats.",
+            "requirements": [
+              "Provide multiple calendar views: Day, Week (work week & full week), Month, Agenda/List.",
+              "Ability to navigate between dates/periods easily.",
+              "Display events with key information: Title, Time, Location, Associated Matter.",
+              "Color-coding of events based on: Event Type (configurable), Associated Matter, User (optional).",
+              "Ability to filter the calendar view by: User(s), Event Type, Matter.",
+              "Highlight current day.",
+              "Responsive design for usability on different screen sizes (desktop, tablet).",
+              "Print-friendly versions of calendar views."
+            ],
+            "user_story": "As a legal assistant managing schedules, I want to view the firm's calendar by week, filtered for specific attorneys, to find open slots for client meetings.",
+            "acceptance_criteria": [
+              "All views (Day, Week, Month, Agenda) render correctly.",
+              "Navigation between periods is intuitive.",
+              "Filtering updates the displayed events accurately.",
+              "Color-coding is applied consistently based on settings."
+            ]
+          },
+          {
+            "id": "SC-002",
+            "title": "Event Creation & Management",
+            "description": "Allow users to create, edit, and manage calendar events.",
+            "requirements": [
+              "Create events by clicking on a time slot or using an 'Add Event' button.",
+              "Event creation form fields:",
+              "  - Title (required).",
+              "  - Start Date & Time (required).",
+              "  - End Date & Time (required) or Duration.",
+              "  - All-day event toggle.",
+              "  - Event Type (required, customizable list: Meeting, Court Date, Deadline, Task Due, Appointment, Phone Call, Other).",
+              "  - Location (text field, optional integration with mapping services).",
+              "  - Video Conferencing Link (manual input or integration - future).",
+              "  - Associated Matter (optional, searchable dropdown).",
+              "  - Attendees (Internal users - multi-select, External contacts - email input).",
+              "  - Description/Notes (rich text).",
+              "  - Reminder Settings (e.g., 15 mins before, 1 day before - multiple reminders possible, via in-app, email, SMS - requires SMS integration).",
+              "  - Recurrence Pattern (Daily, Weekly, Monthly, Yearly, Custom - with end condition).",
+              "Ability to edit existing events (permission dependent).",
+              "Ability to delete events (permission dependent).",
+              "Ability to duplicate events.",
+              "Drag-and-drop rescheduling within Day/Week views (permission dependent)."
+            ],
+            "user_story": "As an attorney, I need to schedule a recurring weekly status meeting with my team for a specific matter, including reminders.",
+            "acceptance_criteria": [
+              "Events are created with all specified details.",
+              "Recurrence patterns generate correct event instances.",
+              "Editing/deleting/rescheduling works as expected.",
+              "Reminders are triggered at the configured times via selected channels."
+            ]
+          },
+          {
+            "id": "SC-003",
+            "title": "Conflict Detection",
+            "description": "Automatically check for scheduling conflicts.",
+            "requirements": [
+              "Perform conflict checks when creating or modifying events.",
+              "Check for conflicts based on attendee availability (other events scheduled for internal users).",
+              "Check for conflicts for scheduled resources (e.g., conference rooms - see SC-006).",
+              "Check for conflicts related to court appearances for the same attorney at the same time.",
+              "Clearly display detected conflicts to the user before saving the event.",
+              "Provide suggestions for alternative times (optional future enhancement).",
+              "Allow overriding conflicts with a warning (configurable setting, permission dependent)."
+            ],
+            "user_story": "As a scheduler, when I try to book a meeting, I want the system to warn me if any of the attorneys I invited already have something scheduled at that time.",
+            "acceptance_criteria": [
+              "Conflicts for attendees and resources are accurately detected.",
+              "Conflict warnings are clear and easy to understand.",
+              "Override functionality works as configured."
+            ]
+          },
+          {
+            "id": "SC-004",
+            "title": "Deadline & Court Date Calculation",
+            "description": "Track critical matter deadlines and calculate related dates based on court rules.",
+            "requirements": [
+              "Ability to mark specific events as 'Deadline' or 'Court Date'.",
+              "Integration with Matter Management: Deadlines associated with a matter appear on the matter's overview/calendar.",
+              "Court Rule Integration (Rules of Civil Procedure, etc.):",
+              "  - Administrators can configure rule sets for relevant jurisdictions.",
+              "  - When creating a court date or triggering event (e.g., 'Complaint Filed'), system can automatically calculate and suggest related deadlines based on selected rules (e.g., 'Answer Due in 21 days').",
+              "  - Account for weekends and court holidays (configurable holidays per jurisdiction).",
+              "  - User must confirm suggested deadlines before they are added to the calendar.",
+              "Deadlines clearly marked on the calendar and matter views.",
+              "Reminders specifically configurable for deadlines.",
+              "Reporting on upcoming and past-due deadlines."
+            ],
+            "user_story": "As a litigation paralegal, when I enter the date a complaint was served, I want the system to automatically calculate the deadline for the answer based on federal court rules.",
+            "acceptance_criteria": [
+              "Court rule calculations are accurate based on configured rules, weekends, and holidays.",
+              "Suggested deadlines are presented clearly for user confirmation.",
+              "Confirmed deadlines appear correctly on the calendar and matter."
+            ]
+          },
+          {
+            "id": "SC-005",
+            "title": "External Calendar Integration (Two-Way Sync)",
+            "description": "Synchronize LegalEase calendar with external calendar providers.",
+            "requirements": [
+              "Support two-way synchronization with: Google Calendar, Microsoft Outlook Calendar (Office 365/Exchange).",
+              "User-level authentication via OAuth 2.0 to link external accounts.",
+              "Configuration options for each linked account:",
+              "  - Which LegalEase events to sync (e.g., All, Only specific types, Only events user is attending).",
+              "  - Which external calendar to sync to/from.",
+              "  - Sync frequency (e.g., near real-time, every 15 minutes).",
+              "Sync events created/updated/deleted in LegalEase to the external calendar.",
+              "Sync events created/updated/deleted in the external calendar to LegalEase (respecting privacy/relevance, potentially marking as 'Personal' or requiring categorization).",
+              "Conflict resolution strategy for sync conflicts (e.g., LegalEase wins, External wins, manual resolution prompt).",
+              "Secure handling of OAuth tokens.",
+              "Ability for users to disconnect linked accounts."
+            ],
+            "user_story": "As an attorney using Google Calendar, I want my LegalEase appointments and deadlines to automatically appear on my Google Calendar, and vice-versa.",
+            "acceptance_criteria": [
+              "OAuth connection is secure and reliable.",
+              "Events sync in both directions within the configured frequency.",
+              "Updates and deletions are synced correctly.",
+              "Configuration options are respected during sync.",
+              "Conflict resolution works as defined."
+            ]
+          },
+          {
+            "id": "SC-006",
+            "title": "Resource Scheduling",
+            "description": "Manage and schedule shared firm resources like conference rooms.",
+            "requirements": [
+              "Administrators can define firm resources (e.g., 'Main Conference Room', 'Projector A').",
+              "Resources can be selected/booked when creating a calendar event.",
+              "Resource availability is checked during conflict detection (SC-003).",
+              "Calendar view can be filtered to show schedule for a specific resource.",
+              "Resource booking visible to all relevant firm members."
+            ],
+            "user_story": "As an office manager, I need to schedule the Main Conference Room for a client deposition and ensure it's not already booked.",
+            "acceptance_criteria": [
+              "Admin can manage resources.",
+              "Resources can be selected during event creation.",
+              "Resource conflicts are detected accurately.",
+              "Resource schedules are viewable."
+            ]
+          },
+          {
+            "id": "SC-007",
+            "title": "Client Appointment Booking (Portal)",
+            "description": "Allow clients to request or book appointments via the Client Portal.",
+            "requirements": [
+              "Firm configures which attorneys/staff are available for portal booking.",
+              "Configure available time slots based on user's LegalEase calendar availability.",
+              "Configure appointment types and durations available for booking.",
+              "Client selects desired service/attorney and sees available slots.",
+              "Client requests an appointment.",
+              "Workflow options:",
+              "  - Request requires firm user approval before being confirmed on calendar.",
+              "  - Auto-confirm booking if slot is definitively free.",
+              "Notifications sent to client and firm user upon request/confirmation/cancellation.",
+              "Confirmed appointments appear on both client portal and firm user's LegalEase calendar."
+            ],
+            "user_story": "As a client, I want to easily see my attorney's available times and request a phone consultation through the portal.",
+            "acceptance_criteria": [
+              "Available slots reflect attorney's actual availability.",
+              "Client can successfully request/book an appointment.",
+              "Approval workflow functions as configured.",
+              "Confirmed appointments appear correctly on all relevant calendars."
+            ]
+          }
+        ],
+        "ui_ux_requirements": [
+          "Calendar interface should be familiar and visually appealing.",
+          "Easy to distinguish different event types via color-coding.",
+          "Event creation/editing form should be efficient.",
+          "Drag-and-drop rescheduling should feel intuitive.",
+          "Clear feedback on successful actions and conflict warnings."
+        ],
+        "data_requirements": [
+          "Event Entity: ID, Title, StartTime, EndTime, IsAllDay, EventTypeID, Location, Description, MatterID (nullable), RecurrenceRule, BaseRecurrenceEventID (nullable).",
+          "EventType Entity: ID, Name, ColorCode, DefaultDuration.",
+          "Attendee Entity: ID, EventID, UserID (nullable), ContactEmail (nullable), Status (Accepted, Declined, Tentative).",
+          "Reminder Entity: ID, EventID, TimeBefore (minutes), Channel (InApp, Email, SMS).",
+          "Resource Entity: ID, Name, Type.",
+          "ResourceBooking Entity: ID, EventID, ResourceID.",
+          "CourtRule Entity: ID, Jurisdiction, RuleSet, CalculationLogic.",
+          "Holiday Entity: ID, Jurisdiction, Date, Name.",
+          "ExternalCalendarSync Entity: ID, UserID, Provider (Google, Outlook), ExternalCalendarID, SyncToken, LastSyncTimestamp.",
+          "Relationships between events, matters, users, resources, etc."
+        ],
+        "non_functional_requirements": [
+          {"type": "Performance", "requirement": "Calendar view loads < 3 seconds (with typical event density)."},
+          {"type": "Performance", "requirement": "Conflict check response < 1 second."},
+          {"type": "Performance", "requirement": "External calendar sync latency < 5 minutes for incremental changes."},
+          {"type": "Reliability", "requirement": "Deadline calculations must be accurate and account for rules/holidays."},
+          {"type": "Reliability", "requirement": "Reminders must be delivered reliably."},
+          {"type": "Reliability", "requirement": "Two-way sync must handle updates/deletions correctly without data loss."},
+          {"type": "Usability", "requirement": "Creating and viewing events should be intuitive."}
+        ],
+        "integration_points": [
+          "Matter Management: Linking events/deadlines to matters.",
+          "Client Portal: Displaying appointments, enabling booking.",
+          "Time Tracking: Potential to create time entries from calendar events.",
+          "Reporting & Analytics: Data for deadline reports, resource utilization.",
+          "External Calendars (Google, Outlook): Two-way synchronization.",
+          "Video Conferencing Platforms (Future): Generating meeting links.",
+          "Notification Service (Email, SMS): Sending reminders."
+        ],
+        "future_considerations": [
+          "Deeper integration with court docketing systems for automatic date updates.",
+          "AI-powered scheduling suggestions based on team availability and priorities.",
+          "Integration with video conferencing tools (Zoom, Teams) to auto-generate meeting links.",
+          "More sophisticated resource management (capacity, setup time)."
+        ],
+        "open_issues": [
+          "Define the initial set of jurisdictions and court rules to support.",
+          "Finalize the conflict resolution strategy for external sync.",
+          "Determine feasibility and priority of SMS reminders."
+        ]
+      }
+    },
+    {
+      "feature": "Client Communication & Portal",
+      "prd": {
+        "version": "1.0",
+        "date": "2023-10-27",
+        "status": "Draft",
+        "introduction": "This document outlines the detailed product requirements for the Client Communication & Portal feature within LegalEase. This provides a secure, branded online space for law firms to communicate with clients, share documents, provide case updates, and manage intake.",
+        "goals": [
+          "Provide a secure and professional channel for attorney-client communication.",
+          "Enhance client experience through transparency and easy access to case information.",
+          "Streamline document sharing and collection with clients.",
+          "Improve efficiency by digitizing intake processes.",
+          "Offer convenient online payment options.",
+          "Strengthen client relationships and trust."
+        ],
+        "user_roles_permissions": [
+          {"role": "Client", "permissions": "Access own portal, view shared matters/documents/invoices, send/receive messages, submit forms, make payments, book appointments (if enabled)."},
+          {"role": "Attorney/Paralegal/Legal Assistant", "permissions": "Invite clients to portal, manage portal access, send/receive messages, share documents/matters, assign intake forms, view client activity."},
+          {"role": "Administrator", "permissions": "Configure portal branding and settings, manage intake form templates, manage global notification settings."}
+        ],
+        "functional_requirements": [
+          {
+            "id": "CP-001",
+            "title": "Secure Client Portal Access",
+            "description": "Provide secure login and access management for clients.",
+            "requirements": [
+              "Firm users invite clients to the portal via email.",
+              "Invitation email contains a unique, secure link/code.",
+              "Client completes registration process: verify email, set password.",
+              "Standard login with email and password.",
+              "Password complexity rules enforced.",
+              "Forgot password / Password reset functionality.",
+              "Support for Two-Factor Authentication (2FA) via email or authenticator app.",
+              "Firm users can enable/disable portal access for specific clients.",
+              "Audit log tracks client logins and access grants/revocations.",
+              "Portal URL potentially customizable with firm branding (subdomain)."
+            ],
+            "user_story": "As a firm administrator, I want to invite a new client to the portal securely, and they should be able to set up their own password.",
+            "acceptance_criteria": [
+              "Invitation links are unique and expire.",
+              "Client registration is successful upon email verification.",
+              "Login requires correct credentials (and 2FA if enabled).",
+              "Firm users can control client access.",
+              "Logins are audited."
+            ]
+          },
+          {
+            "id": "CP-002",
+            "title": "Portal Branding & Layout",
+            "description": "Allow firms to customize the portal's appearance and provide a client-friendly layout.",
+            "requirements": [
+              "Administrators can upload the firm's logo.",
+              "Administrators can configure basic color scheme to match firm branding.",
+              "Clean, intuitive layout optimized for clients (less dense than firm-facing UI).",
+              "Responsive design for access on desktop, tablet, and mobile browsers.",
+              "Main navigation typically includes: Dashboard/Overview, Matters, Documents, Messages, Billing/Invoices, Appointments, Forms.",
+              "Dashboard provides a summary of recent activity, upcoming dates, and unread messages."
+            ],
+            "user_story": "As a firm administrator, I want to add our firm's logo and primary brand color to the client portal to provide a professional and consistent experience.",
+            "acceptance_criteria": [
+              "Logo and color settings are applied correctly.",
+              "Layout is intuitive and easy for clients to navigate.",
+              "Portal is fully functional on common mobile devices."
+            ]
+          },
+          {
+            "id": "CP-003",
+            "title": "Secure Messaging",
+            "description": "Provide an end-to-end encrypted messaging system for communication.",
+            "requirements": [
+              "Thread-based conversations, typically organized by Matter.",
+              "Clients can initiate messages to assigned firm members.",
+              "Firm members can initiate messages to clients associated with matters.",
+              "Real-time message delivery indication (Sent, Delivered, Read - optional).",
+              "Support for text messages with basic formatting (bold, italics, lists).",
+              "Ability to securely attach files (subject to size/type limits, virus scan).",
+              "End-to-end encryption for message content at rest and in transit.",
+              "Notifications (in-app, email) for new messages.",
+              "Search functionality within messages.",
+              "Ability to archive old message threads.",
+              "Firm users see messages within the main LegalEase application, linked to the relevant matter/client."
+            ],
+            "user_story": "As an attorney, I want to send a secure message with an attached document draft to my client via the portal, and be notified when they reply.",
+            "acceptance_criteria": [
+              "Messages are encrypted and only visible to participants.",
+              "File attachments are handled securely.",
+              "Notifications are delivered reliably.",
+              "Firm users can access client messages easily within the main application."
+            ]
+          },
+          {
+            "id": "CP-004",
+            "title": "Document Sharing (Client View)",
+            "description": "Allow clients to view and potentially download documents shared by the firm.",
+            "requirements": [
+              "Dedicated 'Documents' section in the portal.",
+              "Display documents and folders explicitly shared by the firm user.",
+              "Respect permissions set by the firm: View only, View & Download.",
+              "Use the secure in-app document viewer (DM-006) for previews.",
+              "Clear indication of file names, types, and dates shared.",
+              "Ability for clients to upload documents (if enabled by the firm per matter/folder). Uploaded documents notify firm users.",
+              "Search functionality within shared documents."
+            ],
+            "user_story": "As a client, I want to log in to the portal and easily find and view the discovery documents my lawyer shared with me regarding my case.",
+            "acceptance_criteria": [
+              "Only explicitly shared documents/folders are visible.",
+              "Permissions (view vs. download) are enforced.",
+              "Document previews work correctly.",
+              "Client uploads trigger notifications to the firm."
+            ]
+          },
+          {
+            "id": "CP-005",
+            "title": "Matter Information (Client View)",
+            "description": "Display relevant case/matter information to the client.",
+            "requirements": [
+              "Dedicated 'Matters' section listing cases the client is associated with.",
+              "For each matter, display basic information shared by the firm (configurable):",
+              "  - Matter Name/Identifier.",
+              "  - Matter Status.",
+              "  - Key upcoming dates (deadlines, appointments - pulled from Calendar).",
+              "  - Assigned attorney(s).",
+              "  - Link to view shared documents for the matter.",
+              "  - Link to send messages related to the matter.",
+              "Firm users control the level of detail shared per matter.",
+              "Avoid displaying internal notes or sensitive firm-side information."
+            ],
+            "user_story": "As a client, I want to see the current status of my case and any important upcoming court dates when I log into the portal.",
+            "acceptance_criteria": [
+              "Only matters the client is linked to are displayed.",
+              "Information shown matches what the firm configured to share.",
+              "No sensitive internal firm data is exposed."
+            ]
+          },
+          {
+            "id": "CP-006",
+            "title": "Invoice Viewing & Online Payments (Client View)",
+            "description": "Allow clients to view their invoices and make payments through the portal.",
+            "requirements": [
+              "Dedicated 'Billing' or 'Invoices' section.",
+              "List outstanding and historical invoices.",
+              "Display key invoice details: Invoice #, Date, Due Date, Amount Due, Status.",
+              "Ability to view/download the full PDF invoice.",
+              "Display current Trust Account balance (if applicable and enabled by firm).",
+              "Provide 'Pay Online' button for outstanding invoices (integrates with BI-005).",
+              "Display payment history for the client.",
+              "Secure handling of payment processing."
+            ],
+            "user_story": "As a client, I want to view my latest invoice in the portal and pay it securely using my credit card.",
+            "acceptance_criteria": [
+              "Invoices are displayed accurately.",
+              "PDF download works.",
+              "'Pay Online' button correctly links to the payment gateway process.",
+              "Payment history is correct."
+            ]
+          },
+          {
+            "id": "CP-007",
+            "title": "Digital Intake Forms",
+            "description": "Allow firms to send custom intake forms to clients for completion via the portal.",
+            "requirements": [
+              "Firm administrators create Intake Form templates using a form builder interface (supports various field types: text, date, dropdown, checkbox, file upload, e-signature).",
+              "Firm users assign specific forms to clients/matters.",
+              "Client receives notification and accesses the form via the portal.",
+              "Client fills out the form online; progress can be saved.",
+              "Client submits the completed form.",
+              "Option for e-signature capture within the form (integration with e-sign service or native implementation).",
+              "Submitted forms are saved securely, associated with the client/matter.",
+              "Firm users are notified of form submission.",
+              "Ability to view/download submitted form data (e.g., as PDF).",
+              "Potential to map form fields to client/matter fields in LegalEase (future enhancement)."
+            ],
+            "user_story": "As a legal assistant, I want to send our standard 'New Client Intake Form' to a client through the portal for them to complete and sign electronically.",
+            "acceptance_criteria": [
+              "Admin can build complex forms.",
+              "Client can easily access and complete assigned forms.",
+              "Form submissions are saved securely and associated correctly.",
+              "Firm users are notified and can access submitted data.",
+              "E-signature capture is legally compliant (if implemented)."
+            ]
+          },
+          {
+              "id": "CP-008",
+              "title": "Appointment Scheduling (Client View)",
+              "description": "Allow clients to view upcoming appointments and potentially book new ones.",
+              "requirements": [
+                  "Dedicated 'Appointments' or 'Calendar' section in the portal.",
+                  "Display upcoming appointments scheduled between the client and firm members.",
+                  "Show key details: Date, Time, Attorney/Staff Member, Location/Method (Phone, Video, In Person).",
+                  "Option for clients to cancel/reschedule appointments (subject to firm rules/permissions).",
+                  "Integrate with the main Calendar feature (SC-007) to allow clients to book new appointments based on firm availability and configuration."
+              ],
+              "user_story": "As a client, I want to check the date and time of my upcoming meeting with my lawyer via the portal.",
+              "acceptance_criteria": [
+                  "Upcoming appointments are displayed accurately.",
+                  "Booking functionality (if enabled) integrates correctly with the main calendar's availability."
+              ]
+          },
+           {
+              "id": "CP-009",
+              "title": "Notification Preferences",
+              "description": "Allow clients to manage how they receive notifications from the portal.",
+              "requirements": [
+                  "Client settings area within the portal.",
+                  "Options to enable/disable email notifications for: New Messages, New Documents Shared, New Invoices, Upcoming Appointments/Deadlines, Form Assignments.",
+                  "Preferences are saved per client.",
+                  "System respects saved preferences when sending notifications."
+              ],
+              "user_story": "As a client who checks the portal daily, I want to disable email notifications for new messages to avoid cluttering my inbox.",
+              "acceptance_criteria": [
+                  "Client can update notification settings.",
+                  "System correctly sends or suppresses emails based on saved preferences."
+              ]
+          }
+        ],
+        "ui_ux_requirements": [
+          "Portal UI must be extremely simple, clean, and trustworthy.",
+          "Mobile-first responsive design is critical.",
+          "Clear calls to action for key tasks (view document, send message, pay invoice).",
+          "Use of plain language, avoiding legal jargon where possible.",
+          "Accessibility (WCAG 2.1 AA) is paramount for client access."
+        ],
+        "data_requirements": [
+          "ClientPortalUser Entity: ID, UserID (links to main User table for client), LastLogin, 2FAEnabled, NotificationPreferences.",
+          "SharedDocument Entity: ID, DocumentID, ClientID, MatterID, PermissionLevel (View, Download), SharedTimestamp, ExpiryTimestamp (optional).",
+          "ClientMessage Entity: ID, MatterID, SenderUserID, ReceiverUserID, Timestamp, Subject, Body (encrypted), ReadStatus.",
+          "MessageAttachment Entity: ID, ClientMessageID, DocumentID.",
+          "IntakeFormTemplate Entity: ID, Name, FormDefinition (JSON schema).",
+          "IntakeFormSubmission Entity: ID, ClientID, MatterID, TemplateID, SubmissionTimestamp, FormData (encrypted JSON), Status (Pending, Submitted), ESignatureData (optional).",
+          "Relationships link portal users to main user/client records, matters, documents, messages, forms."
+        ],
+        "non_functional_requirements": [
+          {"type": "Performance", "requirement": "Portal page load times < 3 seconds."},
+          {"type": "Security", "requirement": "End-to-end encryption for messages."},
+          {"type": "Security", "requirement": "Strict separation of client data; clients can only see their own information."},
+          {"type": "Security", "requirement": "Secure handling of authentication and session management."},
+          {"type": "Security", "requirement": "Regular security audits and penetration testing focused on portal vulnerabilities."},
+          {"type": "Availability", "requirement": "Portal uptime guarantee of 99.9%."},
+          {"type": "Usability", "requirement": "Portal must be usable by non-technical clients with minimal guidance."},
+          {"type": "Accessibility", "requirement": "WCAG 2.1 Level AA compliance."}
+        ],
+        "integration_points": [
+          "User Management: Creating client user accounts.",
+          "Matter Management: Displaying matter status and details.",
+          "Document Management: Sharing and receiving documents.",
+          "Billing & Invoicing: Displaying invoices and processing payments.",
+          "Scheduling & Calendar: Displaying and booking appointments.",
+          "Notification Service: Sending alerts to clients and firm users.",
+          "E-signature Services: Capturing signatures on intake forms."
+        ],
+        "future_considerations": [
+          "Native mobile application for clients.",
+          "Client self-service for updating contact information.",
+          "Integrated video conferencing directly within the portal.",
+          "Client satisfaction surveys."
+        ],
+        "open_issues": [
+          "Define the exact mechanism for end-to-end message encryption.",
+          "Finalize the feature set for the initial version of the intake form builder.",
+          "Determine specific configuration options for client appointment booking rules."
+        ]
+      }
+    },
+    {
+      "feature": "Legal Research and AI Tools",
+      "prd": {
+        "version": "1.0",
+        "date": "2023-10-27",
+        "status": "Draft",
+        "introduction": "This document outlines the detailed product requirements for the Legal Research and AI Tools feature within LegalEase. This feature aims to enhance lawyer productivity by integrating research capabilities and leveraging AI for tasks like document analysis and drafting assistance.",
+        "goals": [
+          "Integrate with major legal research platforms.",
+          "Provide AI-powered tools to accelerate document review and analysis.",
+          "Assist users in legal drafting and citation checking.",
+          "Leverage firm data (anonymized/aggregated where appropriate) to provide insights.",
+          "Offer capabilities typically found in larger firms to smaller practices.",
+          "Improve the accuracy and efficiency of legal work."
+        ],
+        "user_roles_permissions": [
+          {"role": "Attorney/Paralegal", "permissions": "Access integrated research tools, use AI analysis features, use drafting assistance. Access may depend on firm subscription level."},
+          {"role": "Administrator", "permissions": "Configure integrations, manage AI feature settings (e.g., data usage consent)."}
+        ],
+        "functional_requirements": [
+          {
+            "id": "AI-001",
+            "title": "Legal Research Integration",
+            "description": "Provide seamless access to external legal research platforms.",
+            "requirements": [
+              "Direct integration with platforms like Westlaw, LexisNexis, Fastcase (requires partnerships/API access).",
+              "Users configure their existing credentials for these services within LegalEase.",
+              "Ability to initiate searches on external platforms directly from a Matter view in LegalEase (passing context like case name, jurisdiction).",
+              "Ability to save research results (links, snippets, PDFs) back into the relevant LegalEase Matter.",
+              "Single sign-on (SSO) capabilities if supported by the research platform.",
+              "Display relevant research suggestions based on Matter details (e.g., statutes mentioned, practice area)."
+            ],
+            "user_story": "As an attorney working on a matter, I want to quickly run a search on Westlaw using the case details already in LegalEase and save relevant case law back to the matter file.",
+            "acceptance_criteria": [
+              "User can authenticate with their external research account.",
+              "Searches can be initiated from LegalEase context.",
+              "Research results can be saved back to the matter.",
+              "Authentication tokens are handled securely."
+            ]
+          },
+          {
+            "id": "AI-002",
+            "title": "AI-Powered Document Analysis",
+            "description": "Use AI to analyze uploaded legal documents for insights and risks.",
+            "requirements": [
+              "Trigger analysis manually on selected documents within LegalEase DMS.",
+              "Contract Analysis:",
+              "  - Identify key clauses (e.g., Governing Law, Termination, Liability Limits).",
+              "  - Flag potentially non-standard or risky clauses.",
+              "  - Extract key terms, dates, and obligations.",
+              "  - Compare against firm templates or standard clause libraries.",
+              "Deposition/Transcript Analysis:",
+              "  - Summarize key points.",
+              "  - Identify key entities, dates, and inconsistencies.",
+              "  - Topic extraction.",
+              "Pleading Analysis:",
+              "  - Identify causes of action, defenses.",
+              "  - Extract key legal arguments.",
+              "Present analysis results clearly alongside the document view.",
+              "Allow users to provide feedback on the analysis accuracy.",
+              "Utilize large language models (LLMs) via secure API (e.g., Azure OpenAI, Anthropic) ensuring data privacy/confidentiality agreements are in place.",
+              "Processing happens asynchronously with status indicators."
+            ],
+            "user_story": "As a junior associate reviewing a lengthy contract, I want to use the AI tool to quickly identify potentially problematic clauses and summarize the key obligations.",
+            "acceptance_criteria": [
+              "Analysis can be triggered on supported document types.",
+              "Results (clause identification, summaries, risk flags) are presented clearly.",
+              "Processing completes within a reasonable timeframe (e.g., 1-5 minutes depending on length).",
+              "Data sent for analysis adheres to strict privacy protocols."
+            ]
+          },
+          {
+            "id": "AI-003",
+            "title": "Precedent Recommendation",
+            "description": "Suggest relevant internal documents or clauses based on the current matter context.",
+            "requirements": [
+              "Analyze the details of the current Matter (Practice Area, Description, key facts).",
+              "Search the firm's secure document repository (respecting permissions) for similar past matters or documents.",
+              "Recommend relevant documents (e.g., similar briefs, contracts, motions) or specific clauses.",
+              "Recommendations presented non-intrusively within the Matter view.",
+              "Leverage embeddings and vector search on firm's internal document data.",
+              "Requires firm opt-in and clear data governance.",
+              "Anonymization techniques applied if comparing across different client matters."
+            ],
+            "user_story": "As an attorney drafting a motion for a new case, I want the system to suggest similar successful motions filed by my firm in the past.",
+            "acceptance_criteria": [
+              "Relevant internal documents/clauses are suggested based on matter context.",
+              "Recommendations respect access permissions.",
+              "Firm data used for recommendations is handled securely."
+            ]
+          },
+          {
+            "id": "AI-004",
+            "title": "Legal Drafting Assistance",
+            "description": "Assist users in drafting common legal documents or clauses.",
+            "requirements": [
+              "Integrate AI assistance within a document editor or note-taking interface.",
+              "Generate draft clauses based on user prompts (e.g., 'Draft a standard confidentiality clause').",
+              "Summarize selected text.",
+              "Rephrase selected text (e.g., simplify language, make more formal).",
+              "Check grammar and legal writing style.",
+              "Provide suggestions based on context and firm templates.",
+              "Utilize LLMs via secure API, ensuring prompts and responses are handled confidentially.",
+              "Clearly indicate AI-generated content."
+            ],
+            "user_story": "As a paralegal drafting an engagement letter, I want AI assistance to generate standard clauses like the scope of representation and fee agreement.",
+            "acceptance_criteria": [
+              "AI generates relevant and coherent draft text based on prompts.",
+              "Summarization and rephrasing tools work effectively.",
+              "AI suggestions are clearly marked.",
+              "Interaction with LLM API is secure."
+            ]
+          },
+          {
+            "id": "AI-005",
+            "title": "Legal Citation Checking",
+            "description": "Validate legal citations within documents.",
+            "requirements": [
+              "Identify legal citations (case law, statutes) within document text.",
+              "Validate citation format against standard styles (e.g., Bluebook).",
+              "Check if cited cases are still good law (integration with case law status services like KeyCite/Shepard's via research platform integration - AI-001).",
+              "Flag potentially incorrect or outdated citations.",
+              "Provide suggestions for correct formatting.",
+              "Triggered manually on a document or section.",
+              "Results displayed as annotations or a separate report."
+            ],
+            "user_story": "As an attorney finalizing a brief, I want the system to automatically check all my citations for correct format and to ensure the cited cases haven't been overturned.",
+            "acceptance_criteria": [
+              "Citations are identified correctly.",
+              "Format validation is accurate for supported styles.",
+              "Case law status check (if integrated) provides up-to-date information.",
+              "Errors and suggestions are clearly presented."
+            ]
+          },
+          {
+              "id": "AI-006",
+              "title": "Natural Language Search (Firm Knowledge)",
+              "description": "Allow users to search the firm's documents and matters using natural language questions.",
+              "requirements": [
+                  "Search interface accepts natural language queries (e.g., 'Find briefs related to breach of contract in California filed last year').",
+                  "Query interpreted by an LLM to identify key entities, dates, and concepts.",
+                  "Translated into a structured search query for the firm's Elasticsearch index (documents, matters).",
+                  "Return relevant documents, matters, or specific text snippets.",
+                  "Results respect user permissions.",
+                  "Continuously improves based on user queries and selected results."
+              ],
+              "user_story": "As a junior lawyer, I want to ask 'What was the outcome of the Johnson v. Smith case handled by our firm?' and get relevant matter details or documents.",
+              "acceptance_criteria": [
+                  "Natural language queries return relevant results.",
+                  "Search understands context like dates, jurisdictions, and legal concepts.",
+                  "Permissions are respected in search results."
+              ]
+          },
+          {
+              "id": "AI-007",
+              "title": "AI Settings & Consent",
+              "description": "Manage settings related to AI features and data usage.",
+              "requirements": [
+                  "Firm administrator settings page for AI features.",
+                  "Ability to enable/disable specific AI features firm-wide.",
+                  "Clear explanation of how data is used for each feature.",
+                  "Explicit consent mechanism for features that leverage firm data for model training or improvement (if applicable).",
+                  "Options related to data residency and processing for AI services.",
+                  "Individual users may have preferences for AI assistance levels."
+              ],
+              "user_story": "As a firm administrator concerned about confidentiality, I want to review how document analysis data is handled and provide explicit consent before enabling features that might learn from our documents.",
+              "acceptance_criteria": [
+                  "Settings provide clear control over AI features.",
+                  "Data usage policies are transparent.",
+                  "Consent mechanisms function correctly."
+              ]
+          }
+        ],
+        "ui_ux_requirements": [
+          "AI features should be integrated smoothly into existing workflows (e.g., document view, matter view).",
+          "AI suggestions and analysis should be clearly distinguishable from user-generated content.",
+          "Provide clear indicators when AI processing is occurring.",
+          "Allow users to easily accept, reject, or modify AI suggestions.",
+          "User interface for research integration should be simple and require minimal steps."
+        ],
+        "data_requirements": [
+          "ResearchLink Entity: ID, MatterID, ExternalPlatform, URL, Title, Snippet, SavedTimestamp, UserID.",
+          "DocumentAnalysisResult Entity: ID, DocumentID, AnalysisType (Contract, Transcript), Results (JSON containing clauses, summaries, risks), Status, Timestamp.",
+          "CitationCheckResult Entity: ID, DocumentID, CitationText, LocationInDoc, IsValidFormat, IsGoodLaw (optional), Suggestion, Timestamp.",
+          "Vector embeddings for documents/matters to support similarity searches.",
+          "Secure storage and handling of API keys for external research and AI services."
+        ],
+        "non_functional_requirements": [
+          {"type": "Performance", "requirement": "AI analysis tasks should run asynchronously without blocking the UI."},
+          {"type": "Performance", "requirement": "Response time for drafting assistance < 2-3 seconds."},
+          {"type": "Accuracy", "requirement": "AI analysis and suggestions should meet a high accuracy benchmark (e.g., >85% for key tasks), with clear caveats about limitations."},
+          {"type": "Security", "requirement": "All data sent to third-party AI APIs must be handled under strict confidentiality agreements and preferably anonymized where possible."},
+          {"type": "Security", "requirement": "Secure storage and rotation of API keys."},
+          {"type": "Compliance", "requirement": "AI features must comply with data privacy regulations (GDPR, CCPA)."},
+          {"type": "Ethics", "requirement": "AI suggestions should avoid generating biased or unethical content. Responsibility for final work product remains with the user."}
+        ],
+        "integration_points": [
+          "Document Management: Triggering analysis, storing results, searching content.",
+          "Matter Management: Providing context for research and recommendations.",
+          "External Legal Research Platforms (Westlaw, LexisNexis, etc.).",
+          "Third-Party AI Services (e.g., OpenAI, Anthropic).",
+          "Case Law Status Services (KeyCite, Shepard's via research platforms)."
+        ],
+        "future_considerations": [
+          "Predictive outcome analysis based on case facts and historical data.",
+          "AI-powered e-discovery tools.",
+          "Automated legal brief generation.",
+          "Chatbot interface for legal research or internal knowledge querying."
+        ],
+        "open_issues": [
+          "Finalize partnerships and API agreements with research platforms.",
+          "Select specific LLM providers and establish necessary data privacy agreements.",
+          "Define concrete accuracy benchmarks for different AI analysis tasks.",
+          "Develop detailed data governance policy for features using internal firm data."
+        ]
+      }
+    },
+    {
+      "feature": "Contact & CRM Features",
+      "prd": {
+        "version": "1.0",
+        "date": "2023-10-27",
+        "status": "Draft",
+        "introduction": "This document outlines the detailed product requirements for the Contact Management and Client Relationship Management (CRM) features within LegalEase. This component serves as the central repository for all contacts (clients, prospects, opposing counsel, courts, etc.) and provides tools for managing relationships and business development.",
+        "goals": [
+          "Provide a unified database for all firm contacts.",
+          "Enable easy creation, organization, and retrieval of contact information.",
+          "Track relationships between contacts and matters.",
+          "Facilitate conflict checking against the contact database.",
+          "Support basic business development activities like lead and referral tracking.",
+          "Integrate contact information seamlessly with other LegalEase features."
+        ],
+        "user_roles_permissions": [
+          {"role": "Attorney/Paralegal/Legal Assistant", "permissions": "View contacts, create new contacts, edit contacts they manage or are related to their matters, link contacts to matters."},
+          {"role": "Administrator", "permissions": "Full CRUD access to all contacts, manage custom fields, manage contact types/tags, perform bulk operations."},
+          {"role": "Marketing/Business Development Staff", "permissions": "Manage leads and prospects, track referrals, run marketing reports (if specific role defined)."}
+        ],
+        "functional_requirements": [
+          {
+            "id": "CRM-001",
+            "title": "Centralized Contact Database",
+            "description": "Store and manage information for all types of contacts.",
+            "requirements": [
+              "Store contact details for individuals and organizations/companies.",
+              "Standard fields for individuals: First Name, Last Name, Middle Name/Initial, Salutation, Job Title, Company, Email Addresses (multiple), Phone Numbers (multiple, with type label), Mailing Addresses (multiple, with type label).",
+              "Standard fields for organizations: Company Name, Main Phone, Website, Addresses.",
+              "Ability to link individual contacts to organizations (employees).",
+              "Contact Type categorization (e.g., Client, Prospect, Opposing Counsel, Judge, Court, Vendor, Referral Source - customizable list).",
+              "Custom fields for contacts (configurable by admin, e.g., Bar Number for attorneys, Date of Birth for clients).",
+              "Ability to add notes specific to a contact.",
+              "Tags for flexible grouping.",
+              "Duplicate detection based on name, email, phone number with merge functionality."
+            ],
+            "user_story": "As a legal assistant, I want one central place to store and find contact information for clients, opposing counsel, and courts involved in our cases.",
+            "acceptance_criteria": [
+              "Contacts can be created for both individuals and organizations.",
+              "Multiple emails, phones, addresses can be stored per contact.",
+              "Custom fields appear and store data correctly.",
+              "Duplicate detection identifies potential duplicates upon creation/edit.",
+              "Merging contacts combines information appropriately."
+            ]
+          },
+          {
+            "id": "CRM-002",
+            "title": "Contact Views & Search",
+            "description": "Allow users to easily view, search, and filter contacts.",
+            "requirements": [
+              "List view displaying key contact information.",
+              "Configurable columns in the list view.",
+              "Quick search across all contact fields (Name, Company, Email, Phone, etc.).",
+              "Advanced filtering by: Contact Type, Tags, Associated Attorney, Custom Fields.",
+              "Alphabetical index or quick jump.",
+              "Ability to save filtered views.",
+              "Detailed contact view page showing all information, associated matters, relationships, notes, and activity history."
+            ],
+            "user_story": "As an attorney, I need to quickly find the phone number for opposing counsel on a specific case.",
+            "acceptance_criteria": [
+              "Search returns relevant contacts quickly (<1 second).",
+              "Filtering works across all specified criteria.",
+              "Detailed view aggregates all relevant information for the contact."
+            ]
+          },
+          {
+            "id": "CRM-003",
+            "title": "Relationship Tracking",
+            "description": "Define and visualize relationships between contacts and matters.",
+            "requirements": [
+              "Ability to link contacts to Matters with a specific role (e.g., Client, Opposing Counsel, Witness, Judge, Expert).",
+              "Ability to define relationships between contacts (e.g., 'Spouse of', 'Employee of', 'Referred by').",
+              "Relationship types should be customizable by administrators.",
+              "Visualize relationships on the contact detail page (e.g., network graph or list).",
+              "See all Matters associated with a contact on their detail page.",
+              "See all Contacts associated with a Matter on the matter detail page."
+            ],
+            "user_story": "As a paralegal, I want to link the opposing counsel contact record to the specific matter they are involved in and also note that they were referred by another attorney contact.",
+            "acceptance_criteria": [
+              "Contacts can be linked to matters with defined roles.",
+              "Relationships between contacts can be established.",
+              "Associated matters and relationships are displayed clearly on contact/matter pages.",
+              "Relationship visualization is easy to understand."
+            ]
+          },
+          {
+            "id": "CRM-004",
+            "title": "Conflict Checking Integration",
+            "description": "Integrate contact database with the conflict checking system.",
+            "requirements": [
+              "The Conflict Checking feature (CM-008) must search against all records in the Contact Database.",
+              "Check should include names, company names, email, phone numbers.",
+              "Ability to flag specific contacts as 'Do Not Represent' or having a permanent conflict.",
+              "Results of conflict checks involving a contact should be logged in the contact's activity history."
+            ],
+            "user_story": "As part of the intake process, I need the conflict check to search not just past clients but also all opposing parties and related contacts we have stored.",
+            "acceptance_criteria": [
+              "Conflict check queries the contact database thoroughly.",
+              "Flags for permanent conflicts are respected during checks.",
+              "Conflict check logs appear in contact history."
+            ]
+          },
+          {
+            "id": "CRM-005",
+            "title": "Activity History & Communication Logging",
+            "description": "Track interactions and communications related to contacts.",
+            "requirements": [
+              "Automatically log key events related to a contact: creation, edits, matter associations, conflict checks.",
+              "Ability to manually log communications (Calls, Emails, Meetings) associated with a contact.",
+              "Log fields: Date/Time, Type, Subject/Notes, Associated Matter (optional), User who logged.",
+              "Integrate with Email Syncing (CRM-008) to automatically log emails.",
+              "Display communication/activity history chronologically on the contact detail page.",
+              "Filter history by type or date range."
+            ],
+            "user_story": "As an attorney preparing for a client call, I want to quickly review the history of our recent communications logged against their contact record.",
+            "acceptance_criteria": [
+              "Manual and automatic logs are captured accurately.",
+              "History is displayed clearly and chronologically.",
+              "Filtering works correctly."
+            ]
+          },
+          {
+            "id": "CRM-006",
+            "title": "Lead & Prospect Management",
+            "description": "Tools for tracking potential new clients.",
+            "requirements": [
+              "Ability to designate contacts as 'Prospect' or 'Lead'.",
+              "Track lead status (e.g., New, Contacted, Qualified, Nurturing, Converted, Lost - customizable).",
+              "Record lead source (e.g., Website, Referral, Event - customizable).",
+              "Assign leads to specific attorneys/staff for follow-up.",
+              "Set follow-up reminders/tasks for leads.",
+              "Basic pipeline reporting showing leads by status and source.",
+              "Workflow to convert a 'Lead' contact into a 'Client' contact and associate with a new Matter."
+            ],
+            "user_story": "As a business development manager, I want to track incoming leads from our website, assign them for follow-up, and see our conversion rates by lead source.",
+            "acceptance_criteria": [
+              "Lead status and source can be tracked.",
+              "Follow-up tasks can be created.",
+              "Conversion process links lead to client/matter records.",
+              "Basic pipeline reports are available."
+            ]
+          },
+          {
+            "id": "CRM-007",
+            "title": "Referral Tracking",
+            "description": "Track referrals received from and made to other contacts.",
+            "requirements": [
+              "Ability to designate contacts as 'Referral Sources'.",
+              "When creating a new Lead or Matter, ability to link it to a Referral Source contact.",
+              "Track referrals made by the firm to external contacts.",
+              "Reporting on: Matters generated per referral source, Referrals made by the firm.",
+              "Automated reminders to thank referral sources (optional)."
+            ],
+            "user_story": "As a managing partner, I want to track which referral sources are sending us the most valuable clients so we can nurture those relationships.",
+            "acceptance_criteria": [
+              "Referral source can be linked to new leads/matters.",
+              "Reports accurately show referral activity.",
+              "Ability to track outgoing referrals."
+            ]
+          },
+          {
+            "id": "CRM-008",
+            "title": "Email Integration/Syncing",
+            "description": "Connect email accounts to log communications with contacts.",
+            "requirements": [
+              "Integration with Microsoft Outlook (Office 365) and Google Workspace (Gmail).",
+              "User-level authentication via OAuth 2.0.",
+              "Automatically sync emails (incoming/outgoing) with contacts in LegalEase based on email address matching.",
+              "Synced emails appear in the contact's communication history (CRM-005).",
+              "Provide options for users to select which emails/folders to sync.",
+              "Ability to manually link an email to a specific Matter from within LegalEase.",
+              "Handle email attachments - option to save attachments to the relevant Matter's document repository.",
+              "Configuration for sync frequency and privacy settings (e.g., exclude certain domains)."
+            ],
+            "user_story": "As an attorney, I want my email correspondence with clients stored in my Outlook to be automatically logged against their contact record in LegalEase.",
+            "acceptance_criteria": [
+              "OAuth connection is secure.",
+              "Emails matching contact addresses are synced and displayed in history.",
+              "Attachments can be saved to matters.",
+              "Sync settings are respected."
+            ]
+          },
+          {
+            "id": "CRM-009",
+            "title": "Contact Import/Export",
+            "description": "Allow bulk import and export of contact data.",
+            "requirements": [
+              "Import contacts from CSV files.",
+              "Provide downloadable CSV template.",
+              "Field mapping interface during import.",
+              "Duplicate checking during import process (option to skip, merge, or update).",
+              "Export contacts to CSV format.",
+              "Ability to export filtered lists of contacts.",
+              "Respect permissions during export (user can only export contacts they can view)."
+            ],
+            "user_story": "As an administrator migrating from another system, I want to import our existing list of several hundred contacts into LegalEase from a CSV file.",
+            "acceptance_criteria": [
+              "CSV template is clear.",
+              "Field mapping works correctly.",
+              "Import handles duplicates based on user choice.",
+              "Export generates valid CSV with selected contacts/fields."
+            ]
+          }
+        ],
+        "ui_ux_requirements": [
+          "Contact list should be easy to scan and search.",
+          "Contact detail page should provide a clear 360-degree view.",
+          "Adding/editing contacts should be straightforward.",
+          "Relationship visualization should be intuitive.",
+          "Consistent interface for logging activities."
+        ],
+        "data_requirements": [
+          "Contact Entity: ID, IsOrganization (boolean), FirstName, LastName, CompanyName, ContactTypeID, PrimaryEmail, PrimaryPhone, Website, etc.",
+          "ContactEmail Entity: ID, ContactID, EmailAddress, Type (Work, Home, Other).",
+          "ContactPhone Entity: ID, ContactID, PhoneNumber, Type (Work, Mobile, Home, Fax).",
+          "ContactAddress Entity: ID, ContactID, Street, City, State, Zip, Country, Type (Work, Home, Mailing).",
+          "ContactNote Entity: ID, ContactID, NoteContent, UserID, Timestamp.",
+          "ContactRelationship Entity: ID, ContactID1, ContactID2, RelationshipTypeID.",
+          "MatterContact Link Table: ID, MatterID, ContactID, Role (Client, Opposing, Witness...).",
+          "ActivityLog Entity (can be shared/extended): ID, ContactID, UserID, Timestamp, Type (Call, Email, Meeting), Subject, Notes, AssociatedMatterID.",
+          "LeadInfo Entity: ID, ContactID, Status, Source, AssignedUserID, FollowUpDate.",
+          "Referral Entity: ID, ReferredMatterID (nullable), ReferredLeadID (nullable), ReferringContactID (nullable - source), ReferredToContactID (nullable - outgoing).",
+          "CustomFieldDefinition Entity (shared): ID, Name, Type, AssociatedObjectType (Contact, Matter...).",
+          "CustomFieldValue Entity (shared): ID, ObjectID, ObjectType, FieldDefinitionID, Value."
+        ],
+        "non_functional_requirements": [
+          {"type": "Performance", "requirement": "Contact search results < 1 second."},
+          {"type": "Performance", "requirement": "Contact detail page load < 2 seconds."},
+          {"type": "Performance", "requirement": "Duplicate check performance acceptable during import/creation."},
+          {"type": "Security", "requirement": "Permissions enforced on viewing/editing contacts."},
+          {"type": "Security", "requirement": "Secure handling of email OAuth tokens."},
+          {"type": "Scalability", "requirement": "Support tens of thousands of contacts per firm."},
+          {"type": "Data Integrity", "requirement": "Duplicate detection and merge functionality must maintain data integrity."}
+        ],
+        "integration_points": [
+          "Matter Management: Linking contacts to matters, triggering conflict checks.",
+          "Client Portal: Authenticating clients (who are contacts).",
+          "Billing & Invoicing: Pulling client contact information for invoices.",
+          "Scheduling & Calendar: Inviting contacts to events.",
+          "Email Providers (Outlook, Gmail): Syncing communications.",
+          "Marketing Automation Tools (Future): Syncing leads/contacts."
+        ],
+        "future_considerations": [
+          "Integration with social media profiles (LinkedIn).",
+          "Email marketing campaign tools directly within LegalEase.",
+          "More advanced pipeline visualization and sales forecasting.",
+          "Contact segmentation for targeted communication."
+        ],
+        "open_issues": [
+          "Finalize the list of default Contact Types and Relationship Types.",
+          "Define the exact logic and threshold for duplicate detection.",
+          "Specify privacy rules for email syncing (e.g., automatic filtering of sensitive internal emails)."
+        ]
+      }
+    },
+    {
+      "feature": "Reporting & Analytics",
+      "prd": {
+        "version": "1.0",
+        "date": "2023-10-27",
+        "status": "Draft",
+        "introduction": "This document outlines the detailed product requirements for the Reporting & Analytics feature within LegalEase. This feature provides insights into firm performance, financial health, operational efficiency, and client metrics through dashboards and customizable reports.",
+        "goals": [
+          "Provide actionable insights to firm management.",
+          "Enable monitoring of key performance indicators (KPIs).",
+          "Facilitate data-driven decision making.",
+          "Offer customizable reporting to meet specific firm needs.",
+          "Visualize data effectively through charts and graphs.",
+          "Centralize reporting across different functional areas (finance, operations, clients)."
+        ],
+        "user_roles_permissions": [
+          {"role": "Managing Partner/Administrator", "permissions": "Access all reports and dashboards, create/save custom reports, configure report settings."},
+          {"role": "Attorney/Paralegal", "permissions": "Access reports related to their own productivity and assigned matters (e.g., own billable hours, matter status). View firm-wide reports if granted permission."},
+          {"role": "Billing Specialist", "permissions": "Access financial and billing-related reports (A/R Aging, invoice reports, payment history)."}
+        ],
+        "functional_requirements": [
+          {
+            "id": "RA-001",
+            "title": "Centralized Dashboard",
+            "description": "Provide a high-level overview of key firm metrics.",
+            "requirements": [
+              "Main dashboard accessible upon login (or via primary navigation).",
+              "Display key performance indicators (KPIs) using widgets/cards.",
+              "Standard widgets include:",
+              "  - Financial Summary: Billed vs. Collected (MTD/YTD), A/R Total, Trust Balance Total.",
+              "  - Productivity: Total Billable Hours (MTD/YTD), Average Utilization Rate.",
+              "  - Operational: Active Matters Count, Upcoming Deadlines, Overdue Tasks.",
+              "  - Business Development: New Leads, Conversion Rate (optional).",
+              "Widgets should display summarized data with ability to click through to detailed reports.",
+              "Use charts (bar, line, pie) for visual representation within widgets.",
+              "Dashboard layout should be customizable (users can select which widgets to display and rearrange them - future enhancement).",
+              "Data on the dashboard should be near real-time or refresh periodically.",
+              "Role-based dashboards: Different roles may see different default widgets."
+            ],
+            "user_story": "As a managing partner logging in, I want to immediately see a snapshot of the firm's financial health, attorney productivity, and critical upcoming deadlines.",
+            "acceptance_criteria": [
+              "Dashboard loads within 3 seconds.",
+              "KPIs displayed are accurate based on underlying data.",
+              "Clicking on a widget navigates to the relevant detailed report.",
+              "Data reflects recent activity within a reasonable timeframe (e.g., < 1 hour delay)."
+            ]
+          },
+          {
+            "id": "RA-002",
+            "title": "Standard Report Library",
+            "description": "Provide a collection of pre-built reports covering common firm needs.",
+            "requirements": [
+              "Dedicated 'Reports' section.",
+              "Categorize reports (e.g., Financial, Productivity, Operational, Client, Business Development).",
+              "Financial Reports:",
+              "  - Accounts Receivable (A/R) Aging.",
+              "  - Invoice List (with filtering by status, date, client).",
+              "  - Payment History.",
+              "  - Revenue by Matter/Client/Practice Area.",
+              "  - Expense Report.",
+              "  - Trust Account Ledger & Reconciliation.",
+              "Productivity Reports:",
+              "  - Time Entries Report (filterable by user, matter, date, billable status).",
+              "  - Billable Hours Summary (by user, by matter).",
+              "  - Utilization Rate Report (by user).",
+              "  - Non-Billable Time Analysis.",
+              "Operational Reports:",
+              "  - Matter List (with custom fields, filtering).",
+              "  - Task Report (upcoming, overdue, completed - filterable).",
+              "  - Deadline Report (upcoming, past due).",
+              "  - Statute of Limitations Report.",
+              "Client Reports:",
+              "  - Client List (with contact info, associated matters).",
+              "  - Client Revenue Summary.",
+              "  - Client Trust Balances.",
+              "Business Development Reports:",
+              "  - Lead Source Effectiveness.",
+              "  - Lead Conversion Rate.",
+              "  - Referral Source Report.",
+              "Each report should have standard filtering options (Date Range, User, Matter, Client, Status, etc.) relevant to the report type.",
+              "Reports display data in tables and optionally charts.",
+              "Ability to export standard reports (RA-004)."
+            ],
+            "user_story": "As a billing specialist, I need to run the A/R Aging report weekly to identify overdue invoices.",
+            "acceptance_criteria": [
+              "All listed standard reports are available.",
+              "Reports generate accurate data based on selected filters.",
+              "Filtering options are relevant and functional.",
+              "Reports are presented clearly."
+            ]
+          },
+          {
+            "id": "RA-003",
+            "title": "Custom Report Builder",
+            "description": "Allow users (with permission) to create their own reports.",
+            "requirements": [
+              "Interface for building custom reports.",
+              "Select primary data source/module (e.g., Matters, Time Entries, Invoices, Contacts).",
+              "Select columns/fields to include in the report.",
+              "Apply complex filtering logic (AND/OR conditions, multiple criteria).",
+              "Group data by selected fields (e.g., group time entries by user, then by matter).",
+              "Calculate summary statistics (Sum, Average, Count) for grouped data.",
+              "Option to visualize results using basic chart types (Bar, Line, Pie).",
+              "Ability to save custom report configurations for later use.",
+              "Ability to share saved custom reports with other users/roles (permission dependent).",
+              "Preview results while building the report.",
+              "Access to relevant standard and custom fields from selected modules."
+            ],
+            "user_story": "As a firm administrator, I want to create a custom report showing billable hours per paralegal, grouped by practice area, for the last quarter.",
+            "acceptance_criteria": [
+              "User can select data sources and fields.",
+              "Filtering and grouping logic works as configured.",
+              "Summary calculations are accurate.",
+              "Reports can be saved and re-run.",
+              "Charting options render correctly."
+            ]
+          },
+          {
+            "id": "RA-004",
+            "title": "Report Exporting",
+            "description": "Allow users to export report data.",
+            "requirements": [
+              "Export functionality available for both standard and custom reports.",
+              "Support export formats: CSV, Excel (XLSX), PDF.",
+              "PDF export should maintain report formatting, including charts.",
+              "CSV/Excel export should provide raw data suitable for further analysis.",
+              "Export respects applied filters and sorting.",
+              "Ability to choose specific columns for CSV/Excel export (optional).",
+              "Export process should handle large datasets gracefully (background processing for very large reports)."
+            ],
+            "user_story": "As an analyst, I need to export the detailed time entry report for the last year to Excel for further manipulation.",
+            "acceptance_criteria": [
+              "Export buttons are available on reports.",
+              "Files download in the selected format.",
+              "Exported data matches the filtered/sorted data displayed on screen.",
+              "PDF export preserves formatting.",
+              "Large exports complete successfully."
+            ]
+          },
+          {
+            "id": "RA-005",
+            "title": "Data Visualization",
+            "description": "Present report data visually using charts and graphs.",
+            "requirements": [
+              "Integrate a charting library (e.g., Chart.js, Recharts).",
+              "Standard reports include relevant charts where appropriate (e.g., bar chart for revenue by practice area, line chart for billable hours over time).",
+              "Custom Report Builder allows selecting chart type for visualization.",
+              "Charts should be interactive (e.g., hover effects to show values).",
+              "Charts included in PDF exports.",
+              "Consistent styling applied to charts matching the application theme."
+            ],
+            "user_story": "As a managing partner reviewing firm performance, I find it easier to understand trends when data is presented in charts rather than just tables.",
+            "acceptance_criteria": [
+              "Charts are rendered correctly for standard and custom reports.",
+              "Charts are interactive and display data accurately.",
+              "Charts are included and formatted correctly in PDF exports."
+            ]
+          },
+          {
+            "id": "RA-006",
+            "title": "Scheduled Reports",
+            "description": "Allow users to schedule reports to be run and delivered automatically.",
+            "requirements": [
+              "Ability to schedule saved custom reports or standard reports.",
+              "Configuration options:",
+              "  - Report to run.",
+              "  - Frequency (Daily, Weekly, Monthly, Quarterly).",
+              "  - Delivery Time.",
+              "  - Recipient email addresses.",
+              "  - Export Format (PDF, Excel).",
+              "System runs scheduled reports automatically.",
+              "Deliver reports as email attachments.",
+              "Manage scheduled reports (view, edit, disable, delete).",
+              "Log successful delivery and any failures."
+            ],
+            "user_story": "As an office manager, I want the A/R Aging report to be automatically emailed to me and the managing partner every Monday morning in PDF format.",
+            "acceptance_criteria": [
+              "Reports can be scheduled with specified frequency and recipients.",
+              "Scheduled reports run automatically at the correct time.",
+              "Emails with correct report attachments are delivered.",
+              "Scheduling failures are logged."
+            ]
+          },
+          {
+              "id": "RA-007",
+              "title": "Permissions & Access Control",
+              "description": "Ensure users can only access reports and data they are permitted to see.",
+              "requirements": [
+                  "Report access governed by user roles and permissions.",
+                  "Data within reports automatically filtered based on user's scope (e.g., an attorney running a time entry report only sees their own time unless they have broader permissions).",
+                  "Ability for administrators to grant access to specific standard or saved custom reports to certain roles or users.",
+                  "Permissions apply to viewing, exporting, and scheduling reports."
+              ],
+              "user_story": "As an administrator, I want to ensure that paralegals can only run productivity reports for themselves, while managing partners can see firm-wide financial data.",
+              "acceptance_criteria": [
+                  "Users can only access reports appropriate for their role.",
+                  "Data within reports is correctly scoped based on user permissions.",
+                  "Admin can successfully grant/revoke access to specific reports."
+              ]
+          }
+        ],
+        "ui_ux_requirements": [
+          "Dashboards should be visually engaging and easy to interpret at a glance.",
+          "Report tables should be clean, readable, with clear headings.",
+          "Filtering options should be intuitive and easy to apply.",
+          "Custom report builder should be powerful yet usable, potentially with a drag-and-drop interface.",
+          "Charts should be clear, well-labeled, and interactive."
+        ],
+        "data_requirements": [
+          "Reporting relies on data from all other modules: Matters, TimeEntries, Invoices, Payments, Expenses, Contacts, Users, Tasks, Events, TrustLedgerTransactions, etc.",
+          "Potential use of a denormalized data structure or data warehouse for optimized reporting performance (especially for complex analytics - future enhancement).",
+          "SavedReport Entity: ID, UserID, Name, ReportDefinition (JSON containing data source, columns, filters, grouping, chart settings).",
+          "ScheduledReport Entity: ID, SavedReportID (nullable), StandardReportName (nullable), Frequency, DeliveryTime, Recipients, Format, LastRunTimestamp, NextRunTimestamp."
+        ],
+        "non_functional_requirements": [
+          {"type": "Performance", "requirement": "Most standard reports generate within 5 seconds."},
+          {"type": "Performance", "requirement": "Dashboard loads < 3 seconds."},
+          {"type": "Performance", "requirement": "Custom reports with complex filtering/grouping should have acceptable performance (target < 15-30 seconds, potentially using background processing)."},
+          {"type": "Accuracy", "requirement": "All report calculations and data aggregations must be accurate."},
+          {"type": "Security", "requirement": "Strict data scoping and permissions applied to all reporting queries."},
+          {"type": "Scalability", "requirement": "Reporting system scales effectively as data volume grows."},
+          {"type": "Usability", "requirement": "Users should be able to find and run standard reports easily. Custom builder may require some training."}
+        ],
+        "integration_points": [
+          "All other LegalEase modules (data sources).",
+          "Email Service: For delivering scheduled reports.",
+          "External BI Tools (Future): Potential for data export/API for use in tools like Tableau or Power BI."
+        ],
+        "future_considerations": [
+          "More advanced visualization options in custom reports.",
+          "Predictive analytics (e.g., revenue forecasting).",
+          "Benchmarking against anonymized industry data (opt-in).",
+          "Realization rate reporting (billed vs. collected vs. worked value).",
+          "Integration with external Business Intelligence platforms."
+        ],
+        "open_issues": [
+          "Define the exact list of KPIs for the default dashboard widgets.",
+          "Finalize the specific set of standard reports for V1.",
+          "Determine the complexity/feature set of the V1 custom report builder interface."
+        ]
+      }
+    }
+  ]

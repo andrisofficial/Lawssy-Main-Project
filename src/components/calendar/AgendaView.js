@@ -21,7 +21,11 @@ import {
   Event as EventIcon,
   AccessTime as AccessTimeIcon,
   LocationOn as LocationOnIcon,
-  Description as DescriptionIcon
+  Description as DescriptionIcon,
+  Groups as GroupsIcon,
+  AssignmentLate as AssignmentLateIcon,
+  Notifications as NotificationsIcon,
+  MoreHoriz as MoreHorizIcon
 } from '@mui/icons-material';
 import { format, isSameDay, addDays, subDays, isToday } from 'date-fns';
 import NewEventDialog from './NewEventDialog';
@@ -119,8 +123,6 @@ const AgendaView = ({ currentDate, events }) => {
         return 'Appointment';
       case 'meeting':
         return 'Meeting';
-      case 'task':
-        return 'Task';
       case 'deadline':
         return 'Deadline';
       case 'reminder':
@@ -157,6 +159,25 @@ const AgendaView = ({ currentDate, events }) => {
         return 'Low';
       default:
         return 'Medium';
+    }
+  };
+
+  const getEventTypeIcon = (type) => {
+    switch (type) {
+      case 'appointment':
+        return <EventIcon />;
+      case 'meeting':
+        return <GroupsIcon />;
+      case 'deadline':
+        return <AssignmentLateIcon />;
+      case 'reminder':
+        return <NotificationsIcon />;
+      case 'document':
+        return <DescriptionIcon />;
+      case 'adhoc':
+        return <MoreHorizIcon />;
+      default:
+        return <EventIcon />;
     }
   };
 

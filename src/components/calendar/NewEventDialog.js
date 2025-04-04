@@ -31,7 +31,6 @@ import { format } from 'date-fns';
 const eventTypes = [
   { value: 'appointment', label: 'Appointment', color: '#0069d1' },
   { value: 'meeting', label: 'Meeting', color: '#10B981' },
-  { value: 'task', label: 'Task', color: '#3B82F6' },
   { value: 'deadline', label: 'Deadline', color: '#EF4444' },
   { value: 'reminder', label: 'Reminder', color: '#F59E0B' },
   { value: 'document', label: 'Document Due', color: '#8B5CF6' },

@@ -35,11 +35,6 @@ export const DocumentProvider = ({ children }) => {
     sizeRange: [0, 100]
   });
   
-  // AI Integration State
-  const [aiAnalysis, setAiAnalysis] = useState(null);
-  const [suggestedTags, setSuggestedTags] = useState([]);
-  const [documentSummary, setDocumentSummary] = useState('');
-  
   // Workflow State
   const [workflows, setWorkflows] = useState([]);
   const [activeWorkflow, setActiveWorkflow] = useState(null);
@@ -392,106 +387,6 @@ export const DocumentProvider = ({ children }) => {
     }
   }, []);
   
-  // AI Integration Functions
-  const analyzeDocumentWithAI = useCallback(async (documentId) => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const analysis = await aiService.analyzeDocument(documentId);
-      setAiAnalysis(analysis);
-      return analysis;
-    } catch (err) {
-      setError('Failed to analyze document');
-      console.error(err);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-  
-  const extractMetadataWithAI = useCallback(async (documentId) => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const metadata = await aiService.extractMetadata(documentId);
-      return metadata;
-    } catch (err) {
-      setError('Failed to extract metadata');
-      console.error(err);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-  
-  const getSuggestedTagsWithAI = useCallback(async (documentId) => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const tags = await aiService.suggestTags(documentId);
-      setSuggestedTags(tags);
-      return tags;
-    } catch (err) {
-      setError('Failed to suggest tags');
-      console.error(err);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-  
-  const summarizeDocumentWithAI = useCallback(async (documentId) => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const summary = await aiService.summarizeDocument(documentId);
-      setDocumentSummary(summary);
-      return summary;
-    } catch (err) {
-      setError('Failed to summarize document');
-      console.error(err);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-  
-  const compareDocumentsWithAI = useCallback(async (documentIds) => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const comparison = await aiService.compareDocuments(documentIds);
-      return comparison;
-    } catch (err) {
-      setError('Failed to compare documents');
-      console.error(err);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-  
-  const extractClausesWithAI = useCallback(async (documentId) => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const clauses = await aiService.extractClauses(documentId);
-      return clauses;
-    } catch (err) {
-      setError('Failed to extract clauses');
-      console.error(err);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-  
   // Workflow Functions
   const startDocumentWorkflow = useCallback(async (documentId, workflowData) => {
     setIsLoading(true);
@@ -731,11 +626,6 @@ export const DocumentProvider = ({ children }) => {
     searchResults,
     searchFilters,
     
-    // AI Integration State
-    aiAnalysis,
-    suggestedTags,
-    documentSummary,
-    
     // Workflow State
     workflows,
     activeWorkflow,
@@ -773,14 +663,6 @@ export const DocumentProvider = ({ children }) => {
     // Document Analytics Functions
     fetchAnalyticsData,
     generateAnalyticsReport,
-    
-    // AI Integration Functions
-    analyzeDocumentWithAI,
-    extractMetadataWithAI,
-    getSuggestedTagsWithAI,
-    summarizeDocumentWithAI,
-    compareDocumentsWithAI,
-    extractClausesWithAI,
     
     // Workflow Functions
     startDocumentWorkflow,

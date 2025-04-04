@@ -10,7 +10,7 @@ const { v4: uuidv4 } = require('uuid');
 const mockAIService = require('./mockAIService');
 
 const app = express();
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 5050;
 
 // Middleware
 app.use(cors());
@@ -33,14 +33,18 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// Mock database
+// In-memory storage
+let users = [];
 let documents = [];
 let folders = [
   { id: 'root', name: 'My Documents', parentId: null }
 ];
-
-// Mock tasks database
-let tasks = [];
+let clients = [];
+let matters = [];
+let notes = [];
+let templates = [];
+let timeEntries = [];
+let events = [];
 
 // API Routes
 
@@ -223,483 +227,544 @@ app.post('/api/ai/entities/:documentId', (req, res) => {
   res.json(entities);
 });
 
-// Task Endpoints
-app.get('/api/tasks', (req, res) => {
-  res.json(tasks);
+app.post('/api/documents/extract-entities', (req, res) => {
+  const { document, entityTypes } = req.body;
+  
+  // In a real app, this would call an AI service
+  const entities = mockAIService.extractEntities(document, entityTypes);
+  res.json(entities);
 });
 
-app.get('/api/tasks/:id', (req, res) => {
-  const { id } = req.params;
-  const task = tasks.find(task => task.id === parseInt(id));
+// Billing and Invoicing Endpoints
+let invoices = [];
+let invoiceLineItems = [];
+let payments = [];
+let expenses = [];
+let trustAccounts = [];
+let trustLedgerTransactions = [];
+
+// BI-001: Invoice Generation
+app.post('/api/invoices', (req, res) => {
+  const { 
+    clientId, 
+    matterIds, 
+    dateRange, 
+    selectedTimeEntries, 
+    selectedExpenses,
+    includeNonBillable, 
+    discounts, 
+    manualLineItems,
+    invoiceDate,
+    dueDate,
+    notes,
+    billingModel,
+    template
+  } = req.body;
   
-  if (!task) {
-    return res.status(404).json({ error: 'Task not found' });
+  // Generate unique invoice number
+  const year = new Date().getFullYear();
+  const invoiceCount = invoices.length + 1;
+  const invoiceNumber = `INV-${year}-${invoiceCount.toString().padStart(3, '0')}`;
+  
+  // Calculate total amount
+  let totalAmount = 0;
+  
+  // Process time entries
+  if (selectedTimeEntries && selectedTimeEntries.length > 0) {
+    selectedTimeEntries.forEach(entryId => {
+      const entry = timeEntries.find(te => te.id === entryId);
+      if (entry) {
+        // Mark as billed
+        entry.status = 'billed';
+        entry.invoiceId = invoiceNumber;
+        
+        // Add to invoice line items
+        const lineItem = {
+          id: uuidv4(),
+          invoiceId: invoiceNumber,
+          type: 'Time',
+          description: entry.description,
+          quantity: entry.timeSpent,
+          rate: entry.hourlyRate,
+          amount: entry.timeSpent * entry.hourlyRate,
+          associatedTimeEntryId: entry.id,
+          associatedExpenseId: null
+        };
+        
+        invoiceLineItems.push(lineItem);
+        totalAmount += lineItem.amount;
+      }
+    });
   }
   
-  res.json(task);
-});
-
-app.post('/api/tasks', (req, res) => {
-  const newTask = {
-    id: tasks.length > 0 ? Math.max(...tasks.map(task => task.id)) + 1 : 1,
-    ...req.body,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    auditLog: [
-      {
-        action: 'created',
-        userId: req.body.userId || 201, // Default user ID if not provided
-        userName: req.body.userName || 'System User', // Default user name if not provided
-        timestamp: new Date().toISOString()
+  // Process expenses
+  if (selectedExpenses && selectedExpenses.length > 0) {
+    selectedExpenses.forEach(expenseId => {
+      const expense = expenses.find(exp => exp.id === expenseId);
+      if (expense) {
+        // Mark as billed
+        expense.status = 'billed';
+        expense.invoiceId = invoiceNumber;
+        
+        // Add to invoice line items
+        const lineItem = {
+          id: uuidv4(),
+          invoiceId: invoiceNumber,
+          type: 'Expense',
+          description: expense.description,
+          quantity: 1,
+          rate: expense.amount,
+          amount: expense.amount,
+          associatedTimeEntryId: null,
+          associatedExpenseId: expense.id
+        };
+        
+        invoiceLineItems.push(lineItem);
+        totalAmount += lineItem.amount;
       }
-    ]
+    });
+  }
+  
+  // Process manual line items
+  if (manualLineItems && manualLineItems.length > 0) {
+    manualLineItems.forEach(item => {
+      const lineItem = {
+        id: uuidv4(),
+        invoiceId: invoiceNumber,
+        type: item.type, // 'FlatFee', 'Discount', 'Manual'
+        description: item.description,
+        quantity: item.quantity || 1,
+        rate: item.rate || item.amount,
+        amount: item.amount,
+        associatedTimeEntryId: null,
+        associatedExpenseId: null
+      };
+      
+      invoiceLineItems.push(lineItem);
+      
+      if (item.type === 'Discount') {
+        totalAmount -= lineItem.amount;
+      } else {
+        totalAmount += lineItem.amount;
+      }
+    });
+  }
+  
+  // Create invoice
+  const newInvoice = {
+    id: invoiceNumber,
+    invoiceNumber,
+    clientId,
+    matterIds,
+    invoiceDate: invoiceDate || new Date().toISOString(),
+    dueDate: dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days later
+    totalAmount,
+    balanceDue: totalAmount,
+    status: 'Draft',
+    templateId: template || 'default',
+    notes: notes || '',
+    billingModel: billingModel || 'hourly',
+    createdAt: new Date().toISOString()
   };
   
-  // Check for conflicts if there's a case reference
-  if (newTask.caseReference) {
-    // This is a simplified conflict check - in a real app, this would query a database
-    const caseName = newTask.caseReference.title.toLowerCase();
-    
-    // Sample conflict database
-    const conflictDatabase = [
-      {
-        id: 'conflict1',
-        clientName: 'Johnson',
-        opposingParty: 'Smith',
-        reason: 'Previously represented opposing party'
-      },
-      {
-        id: 'conflict2',
-        clientName: 'Williams',
-        opposingParty: 'Davis',
-        reason: 'Financial interest in outcome'
-      }
-    ];
-    
-    for (const conflict of conflictDatabase) {
-      if (
-        caseName.includes(conflict.clientName.toLowerCase()) ||
-        caseName.includes(conflict.opposingParty.toLowerCase())
-      ) {
-        newTask.conflict = {
-          ...conflict,
-          caseReference: newTask.caseReference
-        };
-        break;
-      }
-    }
-  }
-  
-  tasks.push(newTask);
-  res.status(201).json(newTask);
+  invoices.push(newInvoice);
+  res.status(201).json({
+    invoice: newInvoice,
+    lineItems: invoiceLineItems.filter(li => li.invoiceId === invoiceNumber)
+  });
 });
 
-app.put('/api/tasks/:id', (req, res) => {
+app.put('/api/invoices/:id/finalize', (req, res) => {
   const { id } = req.params;
-  const taskIndex = tasks.findIndex(task => task.id === parseInt(id));
+  const invoice = invoices.find(inv => inv.id === id);
   
-  if (taskIndex === -1) {
-    return res.status(404).json({ error: 'Task not found' });
+  if (!invoice) {
+    return res.status(404).json({ error: 'Invoice not found' });
   }
   
-  const oldTask = tasks[taskIndex];
+  // Update status
+  invoice.status = 'Sent';
+  invoice.finalizedAt = new Date().toISOString();
   
-  // Determine what fields changed
-  const changedFields = Object.keys(req.body).filter(key => {
-    if (key === 'auditLog' || key === 'updatedAt' || key === 'createdAt') return false;
-    if (typeof req.body[key] === 'object' && req.body[key] !== null) {
-      return JSON.stringify(req.body[key]) !== JSON.stringify(oldTask[key]);
+  res.json(invoice);
+});
+
+app.get('/api/invoices', (req, res) => {
+  const { clientId, status, startDate, endDate } = req.query;
+  
+  let filteredInvoices = [...invoices];
+  
+  if (clientId) {
+    filteredInvoices = filteredInvoices.filter(inv => inv.clientId === clientId);
+  }
+  
+  if (status) {
+    filteredInvoices = filteredInvoices.filter(inv => inv.status === status);
+  }
+  
+  if (startDate && endDate) {
+    filteredInvoices = filteredInvoices.filter(inv => {
+      const invDate = new Date(inv.invoiceDate);
+      return invDate >= new Date(startDate) && invDate <= new Date(endDate);
+    });
+  }
+  
+  res.json(filteredInvoices);
+});
+
+app.get('/api/invoices/:id', (req, res) => {
+  const { id } = req.params;
+  const invoice = invoices.find(inv => inv.id === id);
+  
+  if (!invoice) {
+    return res.status(404).json({ error: 'Invoice not found' });
+  }
+  
+  const lineItems = invoiceLineItems.filter(li => li.invoiceId === id);
+  
+  res.json({
+    invoice,
+    lineItems
+  });
+});
+
+app.delete('/api/invoices/:id', (req, res) => {
+  const { id } = req.params;
+  const invoiceIndex = invoices.findIndex(inv => inv.id === id);
+  
+  if (invoiceIndex === -1) {
+    return res.status(404).json({ error: 'Invoice not found' });
+  }
+  
+  // Only drafts can be deleted
+  if (invoices[invoiceIndex].status !== 'Draft') {
+    return res.status(400).json({ error: 'Only draft invoices can be deleted' });
+  }
+  
+  // Remove the invoice
+  invoices.splice(invoiceIndex, 1);
+  
+  // Remove line items
+  invoiceLineItems = invoiceLineItems.filter(li => li.invoiceId !== id);
+  
+  // Update time entries and expenses
+  timeEntries.forEach(entry => {
+    if (entry.invoiceId === id) {
+      entry.invoiceId = null;
+      entry.status = 'unbilled';
     }
-    return req.body[key] !== oldTask[key];
   });
   
-  // Check for conflicts if case reference changed
-  let conflict = oldTask.conflict;
-  if (
-    req.body.caseReference && 
-    (!oldTask.caseReference || 
-     oldTask.caseReference.id !== req.body.caseReference.id)
-  ) {
-    // This is a simplified conflict check - in a real app, this would query a database
-    const caseName = req.body.caseReference.title.toLowerCase();
-    
-    // Sample conflict database
-    const conflictDatabase = [
-      {
-        id: 'conflict1',
-        clientName: 'Johnson',
-        opposingParty: 'Smith',
-        reason: 'Previously represented opposing party'
-      },
-      {
-        id: 'conflict2',
-        clientName: 'Williams',
-        opposingParty: 'Davis',
-        reason: 'Financial interest in outcome'
-      }
-    ];
-    
-    for (const conflict of conflictDatabase) {
-      if (
-        caseName.includes(conflict.clientName.toLowerCase()) ||
-        caseName.includes(conflict.opposingParty.toLowerCase())
-      ) {
-        conflict = {
-          ...conflict,
-          caseReference: req.body.caseReference
-        };
-        break;
-      }
+  expenses.forEach(expense => {
+    if (expense.invoiceId === id) {
+      expense.invoiceId = null;
+      expense.status = 'unbilled';
     }
-  }
+  });
   
-  // Create a new audit log entry
-  const auditLogEntry = {
-    action: 'updated',
-    userId: req.body.userId || 201, // Default user ID if not provided
-    userName: req.body.userName || 'System User', // Default user name if not provided
-    timestamp: new Date().toISOString(),
-    changes: changedFields
-  };
-  
-  // Update the task
-  const updatedTask = {
-    ...oldTask,
-    ...req.body,
-    updatedAt: new Date().toISOString(),
-    auditLog: [...(oldTask.auditLog || []), auditLogEntry],
-    conflict
-  };
-  
-  tasks[taskIndex] = updatedTask;
-  res.json(updatedTask);
+  res.json({ message: 'Invoice deleted successfully' });
 });
 
-app.delete('/api/tasks/:id', (req, res) => {
-  const { id } = req.params;
-  const taskIndex = tasks.findIndex(task => task.id === parseInt(id));
-  
-  if (taskIndex === -1) {
-    return res.status(404).json({ error: 'Task not found' });
-  }
-  
-  tasks.splice(taskIndex, 1);
-  res.json({ success: true });
-});
-
-app.post('/api/tasks/:id/subtasks', (req, res) => {
-  const { id } = req.params;
-  const taskIndex = tasks.findIndex(task => task.id === parseInt(id));
-  
-  if (taskIndex === -1) {
-    return res.status(404).json({ error: 'Task not found' });
-  }
-  
-  const task = tasks[taskIndex];
-  
-  const newSubtask = {
-    id: task.subtasks ? Math.max(...task.subtasks.map(subtask => subtask.id), 0) + 1 : 1,
-    ...req.body,
-    status: req.body.status || 'to-do'
-  };
-  
-  const updatedTask = {
-    ...task,
-    subtasks: [...(task.subtasks || []), newSubtask],
-    updatedAt: new Date().toISOString(),
-    auditLog: [
-      ...(task.auditLog || []),
-      {
-        action: 'subtask_added',
-        userId: req.body.userId || 201,
-        userName: req.body.userName || 'System User',
-        timestamp: new Date().toISOString(),
-        changes: ['subtasks']
-      }
-    ]
-  };
-  
-  tasks[taskIndex] = updatedTask;
-  res.status(201).json(updatedTask);
-});
-
-app.put('/api/tasks/:taskId/subtasks/:subtaskId', (req, res) => {
-  const { taskId, subtaskId } = req.params;
-  const taskIndex = tasks.findIndex(task => task.id === parseInt(taskId));
-  
-  if (taskIndex === -1) {
-    return res.status(404).json({ error: 'Task not found' });
-  }
-  
-  const task = tasks[taskIndex];
-  
-  if (!task.subtasks) {
-    return res.status(404).json({ error: 'Task has no subtasks' });
-  }
-  
-  const subtaskIndex = task.subtasks.findIndex(subtask => subtask.id === parseInt(subtaskId));
-  
-  if (subtaskIndex === -1) {
-    return res.status(404).json({ error: 'Subtask not found' });
-  }
-  
-  const updatedSubtasks = [...task.subtasks];
-  updatedSubtasks[subtaskIndex] = {
-    ...updatedSubtasks[subtaskIndex],
-    ...req.body
-  };
-  
-  const updatedTask = {
-    ...task,
-    subtasks: updatedSubtasks,
-    updatedAt: new Date().toISOString(),
-    auditLog: [
-      ...(task.auditLog || []),
-      {
-        action: 'subtask_updated',
-        userId: req.body.userId || 201,
-        userName: req.body.userName || 'System User',
-        timestamp: new Date().toISOString(),
-        changes: ['subtasks']
-      }
-    ]
-  };
-  
-  tasks[taskIndex] = updatedTask;
-  res.json(updatedTask);
-});
-
-app.post('/api/tasks/:id/comments', (req, res) => {
-  const { id } = req.params;
-  const taskIndex = tasks.findIndex(task => task.id === parseInt(id));
-  
-  if (taskIndex === -1) {
-    return res.status(404).json({ error: 'Task not found' });
-  }
-  
-  const task = tasks[taskIndex];
-  
-  const newComment = {
-    id: task.comments ? Math.max(...task.comments.map(comment => comment.id), 0) + 1 : 1,
-    ...req.body,
-    timestamp: new Date().toISOString()
-  };
-  
-  const updatedTask = {
-    ...task,
-    comments: [...(task.comments || []), newComment],
-    updatedAt: new Date().toISOString(),
-    auditLog: [
-      ...(task.auditLog || []),
-      {
-        action: 'comment_added',
-        userId: req.body.userId || 201,
-        userName: req.body.userName || 'System User',
-        timestamp: new Date().toISOString(),
-        changes: ['comments']
-      }
-    ]
-  };
-  
-  tasks[taskIndex] = updatedTask;
-  res.status(201).json(updatedTask);
-});
-
-app.post('/api/tasks/:id/time', (req, res) => {
-  const { id } = req.params;
-  const taskIndex = tasks.findIndex(task => task.id === parseInt(id));
-  
-  if (taskIndex === -1) {
-    return res.status(404).json({ error: 'Task not found' });
-  }
-  
-  const task = tasks[taskIndex];
-  
-  const timeEntry = {
-    id: task.timeTracking && task.timeTracking.entries ? 
-      Math.max(...task.timeTracking.entries.map(entry => entry.id), 0) + 1 : 1,
-    ...req.body,
-    timestamp: new Date().toISOString()
-  };
-  
-  const currentTimeTracking = task.timeTracking || {
-    estimatedHours: 0,
-    loggedHours: 0,
-    billable: false,
-    entries: []
-  };
-  
-  const updatedTimeTracking = {
-    ...currentTimeTracking,
-    loggedHours: currentTimeTracking.loggedHours + (parseFloat(req.body.hours) || 0),
-    entries: [...(currentTimeTracking.entries || []), timeEntry]
-  };
-  
-  const updatedTask = {
-    ...task,
-    timeTracking: updatedTimeTracking,
-    updatedAt: new Date().toISOString(),
-    auditLog: [
-      ...(task.auditLog || []),
-      {
-        action: 'time_logged',
-        userId: req.body.userId || 201,
-        userName: req.body.userName || 'System User',
-        timestamp: new Date().toISOString(),
-        changes: ['timeTracking']
-      }
-    ]
-  };
-  
-  tasks[taskIndex] = updatedTask;
-  res.status(201).json(updatedTask);
-});
-
-app.post('/api/tasks/:id/attachments', upload.single('file'), (req, res) => {
-  const { id } = req.params;
-  const taskIndex = tasks.findIndex(task => task.id === parseInt(id));
-  
-  if (taskIndex === -1) {
-    return res.status(404).json({ error: 'Task not found' });
-  }
-  
-  if (!req.file) {
-    return res.status(400).json({ error: 'No file uploaded' });
-  }
-  
-  const task = tasks[taskIndex];
-  
-  const newAttachment = {
-    id: task.attachments ? Math.max(...task.attachments.map(attachment => attachment.id), 0) + 1 : 1,
-    name: req.file.originalname,
-    path: req.file.path,
-    size: req.file.size,
-    type: req.file.mimetype,
-    uploadedAt: new Date().toISOString()
-  };
-  
-  const updatedTask = {
-    ...task,
-    attachments: [...(task.attachments || []), newAttachment],
-    updatedAt: new Date().toISOString(),
-    auditLog: [
-      ...(task.auditLog || []),
-      {
-        action: 'attachment_added',
-        userId: req.body.userId || 201,
-        userName: req.body.userName || 'System User',
-        timestamp: new Date().toISOString(),
-        changes: ['attachments']
-      }
-    ]
-  };
-  
-  tasks[taskIndex] = updatedTask;
-  res.status(201).json(updatedTask);
-});
-
-app.post('/api/tasks/:id/recurring', (req, res) => {
-  const { id } = req.params;
-  const taskIndex = tasks.findIndex(task => task.id === parseInt(id));
-  
-  if (taskIndex === -1) {
-    return res.status(404).json({ error: 'Task not found' });
-  }
-  
-  const task = tasks[taskIndex];
-  
-  if (!task.recurrence || !task.recurrence.pattern) {
-    return res.status(400).json({ error: 'Task is not recurring' });
-  }
-  
-  // Calculate next occurrence date
-  let nextDueDate = null;
-  const dueDate = new Date(task.dueDate);
-  const interval = task.recurrence.interval || 1;
-  
-  switch (task.recurrence.pattern) {
-    case 'daily':
-      nextDueDate = new Date(dueDate);
-      nextDueDate.setDate(nextDueDate.getDate() + interval);
-      break;
-    case 'weekly':
-      nextDueDate = new Date(dueDate);
-      nextDueDate.setDate(nextDueDate.getDate() + (interval * 7));
-      break;
-    case 'monthly':
-      nextDueDate = new Date(dueDate);
-      nextDueDate.setMonth(nextDueDate.getMonth() + interval);
-      break;
-    default:
-      return res.status(400).json({ error: 'Invalid recurrence pattern' });
-  }
-  
-  const newTask = {
-    ...task,
-    id: Math.max(...tasks.map(t => t.id)) + 1,
-    title: `${task.title} (Recurring)`,
-    status: 'to-do',
-    dueDate: nextDueDate.toISOString(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    parentTaskId: task.id,
-    auditLog: [
-      {
-        action: 'created',
-        userId: req.body.userId || 201,
-        userName: req.body.userName || 'System User',
-        timestamp: new Date().toISOString(),
-        changes: ['recurring']
-      }
-    ]
-  };
-  
-  tasks.push(newTask);
-  res.status(201).json(newTask);
-});
-
-app.get('/api/tasks/conflicts/check', (req, res) => {
-  const { caseId, caseTitle } = req.query;
-  
-  if (!caseId && !caseTitle) {
-    return res.status(400).json({ error: 'Case ID or title is required' });
-  }
-  
-  // This is a simplified conflict check - in a real app, this would query a database
-  let caseName = caseTitle ? caseTitle.toLowerCase() : '';
-  
-  if (!caseName && caseId) {
-    // Find the case by ID in a real app
-    // For this mock, we'll just return no conflict
-    return res.json(null);
-  }
-  
-  // Sample conflict database
-  const conflictDatabase = [
-    {
-      id: 'conflict1',
-      clientName: 'Johnson',
-      opposingParty: 'Smith',
-      reason: 'Previously represented opposing party'
+// BI-002: Invoice Templates & Customization
+let invoiceTemplates = [
+  {
+    id: 'default',
+    name: 'Default Template',
+    logoUrl: null,
+    colorScheme: {
+      primary: '#1976d2',
+      secondary: '#f50057'
     },
-    {
-      id: 'conflict2',
-      clientName: 'Williams',
-      opposingParty: 'Davis',
-      reason: 'Financial interest in outcome'
-    }
-  ];
+    displayColumns: ['date', 'description', 'hours', 'rate', 'amount'],
+    headerText: '',
+    footerText: 'Thank you for your business!',
+    dateFormat: 'MM/dd/yyyy',
+    showDetailedDescription: true
+  }
+];
+
+app.get('/api/invoice-templates', (req, res) => {
+  res.json(invoiceTemplates);
+});
+
+app.post('/api/invoice-templates', (req, res) => {
+  const { 
+    name, 
+    logoUrl, 
+    colorScheme, 
+    displayColumns, 
+    headerText, 
+    footerText, 
+    dateFormat,
+    showDetailedDescription 
+  } = req.body;
   
-  for (const conflict of conflictDatabase) {
-    if (
-      caseName.includes(conflict.clientName.toLowerCase()) ||
-      caseName.includes(conflict.opposingParty.toLowerCase())
-    ) {
-      return res.json(conflict);
-    }
+  const newTemplate = {
+    id: uuidv4(),
+    name,
+    logoUrl,
+    colorScheme,
+    displayColumns,
+    headerText,
+    footerText,
+    dateFormat,
+    showDetailedDescription
+  };
+  
+  invoiceTemplates.push(newTemplate);
+  res.status(201).json(newTemplate);
+});
+
+app.put('/api/invoice-templates/:id', (req, res) => {
+  const { id } = req.params;
+  const {
+    name, 
+    logoUrl, 
+    colorScheme, 
+    displayColumns, 
+    headerText, 
+    footerText, 
+    dateFormat,
+    showDetailedDescription
+  } = req.body;
+  
+  const templateIndex = invoiceTemplates.findIndex(template => template.id === id);
+  
+  if (templateIndex === -1) {
+    return res.status(404).json({ error: 'Template not found' });
   }
   
-  res.json(null);
+  invoiceTemplates[templateIndex] = {
+    ...invoiceTemplates[templateIndex],
+    name,
+    logoUrl,
+    colorScheme,
+    displayColumns,
+    headerText,
+    footerText,
+    dateFormat,
+    showDetailedDescription
+  };
+  
+  res.json(invoiceTemplates[templateIndex]);
+});
+
+// BI-003: Invoice Management & Tracking
+app.get('/api/invoices/aging-report', (req, res) => {
+  const currentDate = new Date();
+  
+  const report = {
+    current: 0,
+    '1-30': 0,
+    '31-60': 0,
+    '61-90': 0,
+    '90+': 0
+  };
+  
+  invoices.forEach(invoice => {
+    if (invoice.status !== 'Paid' && invoice.status !== 'Draft') {
+      const dueDate = new Date(invoice.dueDate);
+      const diffDays = Math.floor((currentDate - dueDate) / (1000 * 60 * 60 * 24));
+      
+      if (diffDays <= 0) {
+        report.current += invoice.balanceDue;
+      } else if (diffDays <= 30) {
+        report['1-30'] += invoice.balanceDue;
+      } else if (diffDays <= 60) {
+        report['31-60'] += invoice.balanceDue;
+      } else if (diffDays <= 90) {
+        report['61-90'] += invoice.balanceDue;
+      } else {
+        report['90+'] += invoice.balanceDue;
+      }
+    }
+  });
+  
+  res.json(report);
+});
+
+// BI-004: Payment Recording
+app.post('/api/payments', (req, res) => {
+  const {
+    invoiceId,
+    clientId,
+    amount,
+    paymentDate,
+    paymentMethod,
+    referenceNumber,
+    notes,
+    depositAccountType
+  } = req.body;
+  
+  // Validate payment
+  if (!invoiceId) {
+    return res.status(400).json({ error: 'Invoice ID is required' });
+  }
+  
+  const invoice = invoices.find(inv => inv.id === invoiceId);
+  if (!invoice) {
+    return res.status(404).json({ error: 'Invoice not found' });
+  }
+  
+  if (amount > invoice.balanceDue) {
+    return res.status(400).json({ error: 'Payment amount cannot exceed balance due' });
+  }
+  
+  // Create payment record
+  const newPayment = {
+    id: uuidv4(),
+    invoiceId,
+    clientId: clientId || invoice.clientId,
+    amount,
+    paymentDate: paymentDate || new Date().toISOString(),
+    paymentMethod,
+    referenceNumber,
+    notes,
+    depositAccountType,
+    createdAt: new Date().toISOString()
+  };
+  
+  payments.push(newPayment);
+  
+  // Update invoice balance and status
+  invoice.balanceDue -= amount;
+  
+  if (invoice.balanceDue <= 0) {
+    invoice.status = 'Paid';
+  } else if (invoice.balanceDue < invoice.totalAmount) {
+    invoice.status = 'Partial Payment';
+  }
+  
+  res.status(201).json({
+    payment: newPayment,
+    invoice
+  });
+});
+
+app.get('/api/payments', (req, res) => {
+  const { invoiceId, clientId } = req.query;
+  
+  let filteredPayments = [...payments];
+  
+  if (invoiceId) {
+    filteredPayments = filteredPayments.filter(payment => payment.invoiceId === invoiceId);
+  }
+  
+  if (clientId) {
+    filteredPayments = filteredPayments.filter(payment => payment.clientId === clientId);
+  }
+  
+  res.json(filteredPayments);
+});
+
+// BI-005: Online Payment Integration (Mock Integration)
+app.post('/api/payments/online', (req, res) => {
+  const { invoiceId, paymentMethod, amount } = req.body;
+  
+  const invoice = invoices.find(inv => inv.id === invoiceId);
+  if (!invoice) {
+    return res.status(404).json({ error: 'Invoice not found' });
+  }
+  
+  // Simulate payment processing
+  const isSuccess = Math.random() > 0.1; // 90% success rate
+  
+  if (isSuccess) {
+    // Create payment record
+    const newPayment = {
+      id: uuidv4(),
+      invoiceId,
+      clientId: invoice.clientId,
+      amount,
+      paymentDate: new Date().toISOString(),
+      paymentMethod,
+      referenceNumber: `ONLINE-${Date.now()}`,
+      notes: 'Online payment',
+      depositAccountType: 'Operating',
+      createdAt: new Date().toISOString()
+    };
+    
+    payments.push(newPayment);
+    
+    // Update invoice balance and status
+    invoice.balanceDue -= amount;
+    
+    if (invoice.balanceDue <= 0) {
+      invoice.status = 'Paid';
+    } else if (invoice.balanceDue < invoice.totalAmount) {
+      invoice.status = 'Partial Payment';
+    }
+    
+    res.status(201).json({
+      success: true,
+      payment: newPayment,
+      invoice
+    });
+  } else {
+    res.status(400).json({
+      success: false,
+      error: 'Payment processing failed',
+      message: 'The payment gateway declined the transaction.'
+    });
+  }
+});
+
+app.get('/api/payment-methods', (req, res) => {
+  // Mock payment methods
+  res.json([
+    { id: 'credit_card', name: 'Credit Card' },
+    { id: 'ach', name: 'ACH Transfer' },
+    { id: 'check', name: 'Check' },
+    { id: 'wire', name: 'Wire Transfer' },
+    { id: 'cash', name: 'Cash' },
+    { id: 'trust', name: 'Trust Account' }
+  ]);
+});
+
+// BI-006: Expense Tracking
+app.post('/api/expenses', (req, res) => {
+  const {
+    matterId,
+    date,
+    description,
+    category,
+    amount,
+    isBillable,
+    receiptUrl
+  } = req.body;
+  
+  const newExpense = {
+    id: uuidv4(),
+    matterId,
+    date: date || new Date().toISOString(),
+    description,
+    category,
+    amount,
+    isBillable: isBillable !== false,
+    receiptUrl,
+    status: 'unbilled',
+    invoiceId: null,
+    createdAt: new Date().toISOString()
+  };
+  
+  expenses.push(newExpense);
+  res.status(201).json(newExpense);
+});
+
+app.get('/api/expenses', (req, res) => {
+  const { matterId, status } = req.query;
+  
+  let filteredExpenses = [...expenses];
+  
+  if (matterId) {
+    filteredExpenses = filteredExpenses.filter(expense => expense.matterId === matterId);
+  }
+  
+  if (status) {
+    filteredExpenses = filteredExpenses.filter(expense => expense.status === status);
+  }
+  
+  res.json(filteredExpenses);
 });
 
 // Start the server
