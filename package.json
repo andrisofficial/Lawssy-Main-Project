@@ -2,7 +2,7 @@
   "name": "my-app",
   "version": "1.0.0",
   "scripts": {
-    "start": "cross-env PORT=3030 craco start",
+    "start": "cross-env PORT=3031 craco start",
     "build": "craco build",
     "test": "craco test",
     "eject": "react-scripts eject",

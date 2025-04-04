@@ -39,7 +39,8 @@ import {
   Language as LanguageIcon,
   Home as HomeIcon,
   Business as BusinessIcon,
-  LocationOn as LocationIcon
+  LocationOn as LocationIcon,
+  Person as PersonIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -351,11 +352,11 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
   
   // Handle profile photo upload
   const handlePhotoUpload = (e) => {
-    if (e.target.files.length) {
+    if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setProfilePhoto(file);
       
-      // Create preview
+      // Create preview URL
       const reader = new FileReader();
       reader.onloadend = () => {
         setPhotoPreview(reader.result);
@@ -464,8 +465,8 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
   // Validate form
   const validateForm = () => {
     const newErrors = {};
-
-    // Check required fields based on contact type
+    
+    // Basic validation for required fields
     if (formData.contact_type === 'Person') {
       if (!formData.first_name) {
         newErrors.first_name = 'First name is required';
@@ -475,48 +476,31 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
         newErrors.company_name = 'Company name is required';
       }
     }
-
+    
+    // Validate at least one email or phone is provided
+    if (formData.emails.length === 0 || !formData.emails[0].email) {
+      if (formData.phones.length === 0 || !formData.phones[0].phone) {
+        newErrors.contact = 'At least one email or phone number is required';
+      }
+    }
+    
     // Validate emails
-    const primaryEmailCount = formData.emails.filter(item => item.is_primary).length;
-    if (primaryEmailCount === 0 && formData.emails.length > 0) {
-      newErrors.emails = 'At least one email must be set as primary';
-    }
-    
     formData.emails.forEach((item, index) => {
-      if (item.email && !/\S+@\S+\.\S+/.test(item.email)) {
-        newErrors[`email_${index}`] = 'Invalid email address';
-      }
-    });
-
-    // Validate phones
-    const primaryPhoneCount = formData.phones.filter(item => item.is_primary).length;
-    if (primaryPhoneCount === 0 && formData.phones.length > 0) {
-      newErrors.phones = 'At least one phone must be set as primary';
-    }
-    
-    formData.phones.forEach((item, index) => {
-      if (item.phone && !/^[\d\s\-+()]*$/.test(item.phone)) {
-        newErrors[`phone_${index}`] = 'Invalid phone number';
+      if (item.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(item.email)) {
+        newErrors[`email_${index}`] = 'Invalid email format';
       }
     });
     
-    // Validate websites
-    formData.websites.forEach((item, index) => {
-      if (item.url && !/^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(item.url)) {
-        newErrors[`website_${index}`] = 'Invalid URL';
-      }
-    });
-
-    // Status is required
+    // Validate status
     if (!formData.status_id) {
       newErrors.status_id = 'Status is required';
     }
     
     // Validate hourly rate if provided
-    if (formData.hourly_rate && isNaN(formData.hourly_rate)) {
+    if (formData.hourly_rate && isNaN(parseFloat(formData.hourly_rate))) {
       newErrors.hourly_rate = 'Hourly rate must be a number';
     }
-
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -626,192 +610,203 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
   };
 
   return (
-    <Paper sx={{ p: 3 }}>
-      {submitError && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {submitError}
-        </Alert>
-      )}
-      
-      {usesFallbackStatuses && (
-        <Alert severity="warning" sx={{ mb: 3 }}>
-          Unable to connect to the database. Using temporary status values. Some functionality may be limited.
-        </Alert>
-      )}
-
+    <Paper elevation={2} sx={{ p: 3, borderRadius: 2 }}>
       <form onSubmit={handleSubmit}>
-        <Grid container spacing={3}>
-          {/* Contact Type Selection */}
-          <Grid item xs={12}>
-            <Typography variant="h6" gutterBottom>
-              Client Type
-            </Typography>
-            <RadioGroup
-              row
-              name="contact_type"
-              value={formData.contact_type}
-              onChange={handleChange}
-            >
-              <FormControlLabel
-                value="Person"
-                control={<Radio />}
-                label="Person"
-              />
-              <FormControlLabel
-                value="Company"
-                control={<Radio />}
-                label="Company"
-              />
-            </RadioGroup>
-          </Grid>
-          
-          {/* Profile Photo Upload */}
-          <Grid item xs={12}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 2 }}>
-              <Avatar 
-                src={photoPreview} 
-                sx={{ width: 100, height: 100, mb: 2 }}
-                alt="Profile Photo"
-              />
-              <Button
-                variant="outlined"
-                component="label"
-                startIcon={<PhotoCameraIcon />}
-              >
-                {photoPreview ? 'Change Photo' : 'Upload Photo'}
-                <input
-                  type="file"
-                  hidden
-                  accept="image/*"
-                  onChange={handlePhotoUpload}
-                />
-              </Button>
-            </Box>
-          </Grid>
-
-          <Grid item xs={12}>
-            <Divider>
-              {formData.contact_type === 'Person' ? 'Personal Information' : 'Company Information'}
-            </Divider>
-          </Grid>
-          
-          {/* Personal Information Fields (Person) */}
-          {formData.contact_type === 'Person' && (
-            <>
-              <Grid item xs={12} md={3}>
-                <FormControl fullWidth>
-                  <InputLabel id="prefix-label">Prefix</InputLabel>
-                  <Select
-                    labelId="prefix-label"
-                    name="prefix"
-                    value={formData.prefix}
-                    onChange={handleChange}
-                    label="Prefix"
-                  >
-                    <MenuItem value="">None</MenuItem>
-                    {NAME_PREFIXES.map(prefix => (
-                      <MenuItem key={prefix} value={prefix}>{prefix}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} md={3}>
-                <TextField
-                  fullWidth
-                  label="First Name"
-                  name="first_name"
-                  value={formData.first_name}
-                  onChange={handleChange}
-                  error={!!errors.first_name}
-                  helperText={errors.first_name}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12} md={3}>
-                <TextField
-                  fullWidth
-                  label="Middle Name"
-                  name="middle_name"
-                  value={formData.middle_name}
-                  onChange={handleChange}
-                />
-              </Grid>
-              <Grid item xs={12} md={3}>
-                <TextField
-                  fullWidth
-                  label="Last Name"
-                  name="last_name"
-                  value={formData.last_name}
-                  onChange={handleChange}
-                />
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <LocalizationProvider dateAdapter={AdapterDateFns}>
-                  <DatePicker
-                    label="Date of Birth"
-                    value={formData.date_of_birth}
-                    onChange={handleDateChange}
-                    slotProps={{
-                      textField: {
-                        fullWidth: true,
-                        variant: 'outlined'
-                      }
-                    }}
-                  />
-                </LocalizationProvider>
-              </Grid>
-            </>
-          )}
-
-          {/* Company Information Fields (Company) */}
-          {formData.contact_type === 'Company' && (
-            <>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Company Name"
-                  name="company_name"
-                  value={formData.company_name}
-                  onChange={handleChange}
-                  error={!!errors.company_name}
-                  helperText={errors.company_name}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Your Title"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleChange}
-                  placeholder="e.g., CEO, Manager"
-                />
-              </Grid>
-            </>
-          )}
-
-          {/* Email Addresses Section */}
-          <Grid item xs={12}>
-            <Divider>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <EmailIcon sx={{ mr: 1 }} />
-                <Typography variant="subtitle1">Email Addresses</Typography>
-              </Box>
-            </Divider>
-          </Grid>
-          
-          {errors.emails && (
+        <Grid container spacing={2}>
+          {submitError && (
             <Grid item xs={12}>
-              <Alert severity="error">{errors.emails}</Alert>
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {submitError}
+              </Alert>
             </Grid>
           )}
 
+          {usesFallbackStatuses && (
+            <Grid item xs={12}>
+              <Alert severity="info" sx={{ mb: 2 }}>
+                Using offline client status values.
+              </Alert>
+            </Grid>
+          )}
+
+          {/* Is this a person or company selector */}
+          <Grid item xs={12}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <Button
+                  variant={formData.contact_type === 'Person' ? 'contained' : 'outlined'}
+                  onClick={() => setFormData({ ...formData, contact_type: 'Person' })}
+                  startIcon={<Avatar sx={{ width: 24, height: 24, bgcolor: formData.contact_type === 'Person' ? 'primary.main' : 'grey.400' }}><PersonIcon fontSize="small" /></Avatar>}
+                  sx={{ borderRadius: 1, px: 3 }}
+                >
+                  Person
+                </Button>
+                <Button
+                  variant={formData.contact_type === 'Company' ? 'contained' : 'outlined'}
+                  onClick={() => setFormData({ ...formData, contact_type: 'Company' })}
+                  startIcon={<Avatar sx={{ width: 24, height: 24, bgcolor: formData.contact_type === 'Company' ? 'primary.main' : 'grey.400' }}><BusinessIcon fontSize="small" /></Avatar>}
+                  sx={{ borderRadius: 1, px: 3 }}
+                >
+                  Company
+                </Button>
+              </Box>
+            </Box>
+          </Grid>
+
+          {/* Personal Information or Company Information Section */}
+          <Grid item xs={12}>
+            <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1 }}>
+              {formData.contact_type === 'Person' ? 'Personal Information' : 'Company Information'}
+            </Typography>
+          </Grid>
+
+          {/* Profile Photo - Smaller and moved inside personal information */}
+          <Grid item xs={12} container spacing={2} alignItems="flex-start">
+            <Grid item xs={12} sm={2}>
+              <Box sx={{ textAlign: 'center', mb: 1 }}>
+                <Avatar
+                  src={photoPreview}
+                  sx={{ 
+                    width: 80, 
+                    height: 80, 
+                    margin: '0 auto', 
+                    mb: 1,
+                    bgcolor: 'grey.300' 
+                  }}
+                />
+                <Button
+                  component="label"
+                  size="small"
+                  variant="outlined"
+                  startIcon={<PhotoCameraIcon />}
+                >
+                  Upload Photo
+                  <input
+                    type="file"
+                    hidden
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                  />
+                </Button>
+              </Box>
+            </Grid>
+
+            <Grid item xs={12} sm={10} container spacing={2}>
+              {formData.contact_type === 'Person' ? (
+                // Person Fields
+                <>
+                  <Grid item xs={12} sm={3}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel id="prefix-label">Prefix</InputLabel>
+                      <Select
+                        labelId="prefix-label"
+                        name="prefix"
+                        value={formData.prefix}
+                        onChange={handleChange}
+                        label="Prefix"
+                      >
+                        <MenuItem value="">None</MenuItem>
+                        {NAME_PREFIXES.map(prefix => (
+                          <MenuItem key={prefix} value={prefix}>{prefix}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} sm={3}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="First Name"
+                      name="first_name"
+                      value={formData.first_name}
+                      onChange={handleChange}
+                      error={!!errors.first_name}
+                      helperText={errors.first_name}
+                      required
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={3}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="Middle Name"
+                      name="middle_name"
+                      value={formData.middle_name}
+                      onChange={handleChange}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={3}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="Last Name"
+                      name="last_name"
+                      value={formData.last_name}
+                      onChange={handleChange}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <LocalizationProvider dateAdapter={AdapterDateFns}>
+                      <DatePicker
+                        label="Date of Birth"
+                        value={formData.date_of_birth}
+                        onChange={handleDateChange}
+                        slotProps={{ 
+                          textField: { 
+                            fullWidth: true,
+                            size: "small",
+                            name: "date_of_birth"
+                          }
+                        }}
+                      />
+                    </LocalizationProvider>
+                  </Grid>
+                </>
+              ) : (
+                // Company Fields
+                <>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="Company Name"
+                      name="company_name"
+                      value={formData.company_name}
+                      onChange={handleChange}
+                      error={!!errors.company_name}
+                      helperText={errors.company_name}
+                      required
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="Your Title/Position"
+                      name="title"
+                      value={formData.title}
+                      onChange={handleChange}
+                    />
+                  </Grid>
+                </>
+              )}
+            </Grid>
+          </Grid>
+
+          {/* Email Addresses Section */}
+          <Grid item xs={12}>
+            <Typography variant="subtitle1" fontWeight="medium" sx={{ display: 'flex', alignItems: 'center', mt: 2, mb: 1 }}>
+              <EmailIcon sx={{ mr: 1, fontSize: 20 }} />
+              Email Addresses
+            </Typography>
+          </Grid>
+
           {formData.emails.map((emailItem, index) => (
-            <Grid item xs={12} key={`email-${index}`} container spacing={2}>
-              <Grid item xs={12} md={5}>
+            <Grid item xs={12} key={`email-${index}`} container spacing={2} alignItems="center">
+              <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
+                  size="small"
                   label="Email Address"
                   value={emailItem.email}
                   onChange={(e) => handleArrayItemChange('emails', index, 'email', e.target.value)}
@@ -820,14 +815,14 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <EmailIcon />
+                        <EmailIcon fontSize="small" />
                       </InputAdornment>
                     ),
                   }}
                 />
               </Grid>
-              <Grid item xs={5} md={3}>
-                <FormControl fullWidth>
+              <Grid item xs={9} md={4}>
+                <FormControl fullWidth size="small">
                   <InputLabel>Type</InputLabel>
                   <Select
                     value={emailItem.type}
@@ -840,25 +835,14 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={4} md={2}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={emailItem.is_primary}
-                      onChange={() => handleSetPrimary('emails', index)}
-                      disabled={emailItem.is_primary}
-                    />
-                  }
-                  label="Primary"
-                />
-              </Grid>
               <Grid item xs={3} md={2}>
                 <Button
                   color="error"
-                  onClick={() => handleRemoveArrayItem('emails', index)}
-                  disabled={formData.emails.length <= 1}
-                  startIcon={<DeleteIcon />}
                   variant="outlined"
+                  size="small"
+                  disabled={formData.emails.length === 1}
+                  onClick={() => handleRemoveArrayItem('emails', index)}
+                  fullWidth
                 >
                   Remove
                 </Button>
@@ -871,6 +855,7 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
               startIcon={<AddIcon />}
               onClick={() => handleAddArrayItem('emails', { email: '', type: 'Work', is_primary: false })}
               variant="outlined"
+              size="small"
             >
               Add Email Address
             </Button>
@@ -878,41 +863,32 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
 
           {/* Phone Numbers Section */}
           <Grid item xs={12}>
-            <Divider>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <PhoneIcon sx={{ mr: 1 }} />
-                <Typography variant="subtitle1">Phone Numbers</Typography>
-              </Box>
-            </Divider>
+            <Typography variant="subtitle1" fontWeight="medium" sx={{ display: 'flex', alignItems: 'center', mt: 2, mb: 1 }}>
+              <PhoneIcon sx={{ mr: 1, fontSize: 20 }} />
+              Phone Numbers
+            </Typography>
           </Grid>
-          
-          {errors.phones && (
-            <Grid item xs={12}>
-              <Alert severity="error">{errors.phones}</Alert>
-            </Grid>
-          )}
 
           {formData.phones.map((phoneItem, index) => (
-            <Grid item xs={12} key={`phone-${index}`} container spacing={2}>
-              <Grid item xs={12} md={5}>
+            <Grid item xs={12} key={`phone-${index}`} container spacing={2} alignItems="center">
+              <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
+                  size="small"
                   label="Phone Number"
                   value={phoneItem.phone}
                   onChange={(e) => handleArrayItemChange('phones', index, 'phone', e.target.value)}
-                  error={!!errors[`phone_${index}`]}
-                  helperText={errors[`phone_${index}`]}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <PhoneIcon />
+                        <PhoneIcon fontSize="small" />
                       </InputAdornment>
                     ),
                   }}
                 />
               </Grid>
-              <Grid item xs={5} md={3}>
-                <FormControl fullWidth>
+              <Grid item xs={9} md={4}>
+                <FormControl fullWidth size="small">
                   <InputLabel>Type</InputLabel>
                   <Select
                     value={phoneItem.type}
@@ -925,25 +901,14 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={4} md={2}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={phoneItem.is_primary}
-                      onChange={() => handleSetPrimary('phones', index)}
-                      disabled={phoneItem.is_primary}
-                    />
-                  }
-                  label="Primary"
-                />
-              </Grid>
               <Grid item xs={3} md={2}>
                 <Button
                   color="error"
-                  onClick={() => handleRemoveArrayItem('phones', index)}
-                  disabled={formData.phones.length <= 1}
-                  startIcon={<DeleteIcon />}
                   variant="outlined"
+                  size="small"
+                  disabled={formData.phones.length === 1}
+                  onClick={() => handleRemoveArrayItem('phones', index)}
+                  fullWidth
                 >
                   Remove
                 </Button>
@@ -954,8 +919,9 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
           <Grid item xs={12}>
             <Button
               startIcon={<AddIcon />}
-              onClick={() => handleAddArrayItem('phones', { phone: '', type: 'Mobile', is_primary: false })}
+              onClick={() => handleAddArrayItem('phones', { phone: '', type: 'Work', is_primary: false })}
               variant="outlined"
+              size="small"
             >
               Add Phone Number
             </Button>
@@ -963,19 +929,18 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
 
           {/* Websites Section */}
           <Grid item xs={12}>
-            <Divider>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <LanguageIcon sx={{ mr: 1 }} />
-                <Typography variant="subtitle1">Websites</Typography>
-              </Box>
-            </Divider>
+            <Typography variant="subtitle1" fontWeight="medium" sx={{ display: 'flex', alignItems: 'center', mt: 2, mb: 1 }}>
+              <LanguageIcon sx={{ mr: 1, fontSize: 20 }} />
+              Websites
+            </Typography>
           </Grid>
 
           {formData.websites.map((websiteItem, index) => (
-            <Grid item xs={12} key={`website-${index}`} container spacing={2}>
-              <Grid item xs={12} md={5}>
+            <Grid item xs={12} key={`website-${index}`} container spacing={2} alignItems="center">
+              <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
+                  size="small"
                   label="Website URL"
                   value={websiteItem.url}
                   onChange={(e) => handleArrayItemChange('websites', index, 'url', e.target.value)}
@@ -984,14 +949,14 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <LanguageIcon />
+                        <LanguageIcon fontSize="small" />
                       </InputAdornment>
                     ),
                   }}
                 />
               </Grid>
-              <Grid item xs={5} md={3}>
-                <FormControl fullWidth>
+              <Grid item xs={9} md={4}>
+                <FormControl fullWidth size="small">
                   <InputLabel>Type</InputLabel>
                   <Select
                     value={websiteItem.type}
@@ -1004,25 +969,14 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={4} md={2}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={websiteItem.is_primary}
-                      onChange={() => handleSetPrimary('websites', index)}
-                      disabled={websiteItem.is_primary}
-                    />
-                  }
-                  label="Primary"
-                />
-              </Grid>
               <Grid item xs={3} md={2}>
                 <Button
                   color="error"
+                  variant="outlined"
+                  size="small"
                   onClick={() => handleRemoveArrayItem('websites', index)}
                   disabled={formData.websites.length <= 1}
-                  startIcon={<DeleteIcon />}
-                  variant="outlined"
+                  fullWidth
                 >
                   Remove
                 </Button>
@@ -1035,6 +989,7 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
               startIcon={<AddIcon />}
               onClick={() => handleAddArrayItem('websites', { url: '', type: 'Work', is_primary: false })}
               variant="outlined"
+              size="small"
             >
               Add Website
             </Button>
@@ -1042,12 +997,10 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
 
           {/* Addresses Section */}
           <Grid item xs={12}>
-            <Divider>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <LocationIcon sx={{ mr: 1 }} />
-                <Typography variant="subtitle1">Addresses</Typography>
-              </Box>
-            </Divider>
+            <Typography variant="subtitle1" fontWeight="medium" sx={{ display: 'flex', alignItems: 'center', mt: 2, mb: 1 }}>
+              <LocationIcon sx={{ mr: 1, fontSize: 20 }} />
+              Addresses
+            </Typography>
           </Grid>
 
           {formData.addresses.map((addressItem, index) => (
@@ -1056,19 +1009,22 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
                 <CardHeader
                   title={`${addressItem.type} Address`}
                   action={
-                    <IconButton 
+                    <Button 
                       color="error" 
+                      variant="outlined"
+                      size="small"
                       onClick={() => handleRemoveArrayItem('addresses', index)}
                       disabled={formData.addresses.length <= 1}
+                      sx={{ mr: 1 }}
                     >
-                      <DeleteIcon />
-                    </IconButton>
+                      Remove
+                    </Button>
                   }
                 />
                 <CardContent>
                   <Grid container spacing={2}>
                     <Grid item xs={12} md={3}>
-                      <FormControl fullWidth>
+                      <FormControl fullWidth size="small">
                         <InputLabel>Type</InputLabel>
                         <Select
                           value={addressItem.type}
@@ -1084,6 +1040,7 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
                     <Grid item xs={12}>
                       <TextField
                         fullWidth
+                        size="small"
                         label="Street Address"
                         value={addressItem.street}
                         onChange={(e) => handleArrayItemChange('addresses', index, 'street', e.target.value)}
@@ -1092,6 +1049,7 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
                     <Grid item xs={12} md={6}>
                       <TextField
                         fullWidth
+                        size="small"
                         label="City"
                         value={addressItem.city}
                         onChange={(e) => handleArrayItemChange('addresses', index, 'city', e.target.value)}
@@ -1100,6 +1058,7 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
                     <Grid item xs={6} md={3}>
                       <TextField
                         fullWidth
+                        size="small"
                         label="State/Province"
                         value={addressItem.state}
                         onChange={(e) => handleArrayItemChange('addresses', index, 'state', e.target.value)}
@@ -1108,6 +1067,7 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
                     <Grid item xs={6} md={3}>
                       <TextField
                         fullWidth
+                        size="small"
                         label="Zip/Postal Code"
                         value={addressItem.zip}
                         onChange={(e) => handleArrayItemChange('addresses', index, 'zip', e.target.value)}
@@ -1116,6 +1076,7 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
                     <Grid item xs={12} md={6}>
                       <TextField
                         fullWidth
+                        size="small"
                         label="Country"
                         value={addressItem.country}
                         onChange={(e) => handleArrayItemChange('addresses', index, 'country', e.target.value)}
@@ -1139,6 +1100,7 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
                 type: 'Work' 
               })}
               variant="outlined"
+              size="small"
             >
               Add New Address
             </Button>
@@ -1146,9 +1108,9 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
 
           {/* Tags Section */}
           <Grid item xs={12}>
-            <Divider>
-              <Typography variant="subtitle1">Tags</Typography>
-            </Divider>
+            <Typography variant="subtitle1" fontWeight="medium" sx={{ mt: 2, mb: 1 }}>
+              Tags
+            </Typography>
           </Grid>
           
           <Grid item xs={12}>
@@ -1158,6 +1120,7 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
               options={[]}
               value={formData.tags}
               onChange={handleTagsChange}
+              size="small"
               renderTags={(value, getTagProps) =>
                 value.map((option, index) => (
                   <Chip
@@ -1166,6 +1129,7 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
                     key={option}
                     color="primary"
                     variant="outlined"
+                    size="small"
                   />
                 ))
               }
@@ -1174,6 +1138,7 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
                   {...params}
                   variant="outlined"
                   label="Tags"
+                  size="small"
                   placeholder="Add tags (e.g., VIP, Corporate, Pro Bono)"
                   helperText="Press Enter to add a tag"
                 />
@@ -1183,9 +1148,9 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
 
           {/* Custom Fields Section */}
           <Grid item xs={12}>
-            <Divider>
-              <Typography variant="subtitle1">Custom Fields</Typography>
-            </Divider>
+            <Typography variant="subtitle1" fontWeight="medium" sx={{ mt: 2, mb: 1 }}>
+              Custom Fields
+            </Typography>
           </Grid>
 
           {formData.custom_fields.map((field, index) => (
@@ -1193,40 +1158,29 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
               <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
+                  size="small"
                   label="Field Name"
                   value={field.name}
                   onChange={(e) => handleCustomFieldChange(index, 'name', e.target.value)}
                   placeholder="e.g., Preferred Language"
                 />
               </Grid>
-              <Grid item xs={8} md={4}>
+              <Grid item xs={8} md={5}>
                 <TextField
                   fullWidth
+                  size="small"
                   label="Field Value"
                   value={field.value}
                   onChange={(e) => handleCustomFieldChange(index, 'value', e.target.value)}
                 />
               </Grid>
-              <Grid item xs={4} md={2}>
-                <FormControl fullWidth>
-                  <InputLabel>Field Type</InputLabel>
-                  <Select
-                    value={field.type}
-                    onChange={(e) => handleCustomFieldChange(index, 'type', e.target.value)}
-                    label="Field Type"
-                  >
-                    <MenuItem value="text">Text</MenuItem>
-                    <MenuItem value="picklist">Picklist</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} md={2}>
+              <Grid item xs={4} md={3}>
                 <Button
                   fullWidth
                   color="error"
-                  onClick={() => handleRemoveCustomField(index)}
-                  startIcon={<DeleteIcon />}
                   variant="outlined"
+                  size="small"
+                  onClick={() => handleRemoveCustomField(index)}
                 >
                   Remove
                 </Button>
@@ -1239,6 +1193,7 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
               startIcon={<AddIcon />}
               onClick={handleAddCustomField}
               variant="outlined"
+              size="small"
             >
               Add Custom Field
             </Button>
@@ -1246,13 +1201,13 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
 
           {/* Billing Preferences Section */}
           <Grid item xs={12}>
-            <Divider>
-              <Typography variant="subtitle1">Billing Preferences</Typography>
-            </Divider>
+            <Typography variant="subtitle1" fontWeight="medium" sx={{ mt: 2, mb: 1 }}>
+              Billing Preferences
+            </Typography>
           </Grid>
           
           <Grid item xs={12} md={4}>
-            <FormControl fullWidth>
+            <FormControl fullWidth size="small">
               <InputLabel>Payment Type</InputLabel>
               <Select
                 name="payment_type"
@@ -1271,6 +1226,7 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
           <Grid item xs={12} md={4}>
             <TextField
               fullWidth
+              size="small"
               label="Hourly Rate"
               name="hourly_rate"
               value={formData.hourly_rate}
@@ -1286,6 +1242,7 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
           <Grid item xs={12} md={4}>
             <TextField
               fullWidth
+              size="small"
               label="LEDES Client ID"
               name="ledes_id"
               value={formData.ledes_id}
@@ -1295,13 +1252,13 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
 
           {/* Status Selection */}
           <Grid item xs={12}>
-            <Divider>
-              <Typography variant="subtitle1">Status</Typography>
-            </Divider>
+            <Typography variant="subtitle1" fontWeight="medium" sx={{ mt: 2, mb: 1 }}>
+              Status
+            </Typography>
           </Grid>
           
           <Grid item xs={12} md={6}>
-            <FormControl fullWidth error={!!errors.status_id}>
+            <FormControl fullWidth size="small" error={!!errors.status_id}>
               <InputLabel id="status-select-label">Status</InputLabel>
               <Select
                 labelId="status-select-label"
@@ -1335,14 +1292,15 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
 
           {/* Notes */}
           <Grid item xs={12}>
-            <Divider>
-              <Typography variant="subtitle1">Notes</Typography>
-            </Divider>
+            <Typography variant="subtitle1" fontWeight="medium" sx={{ mt: 2, mb: 1 }}>
+              Notes
+            </Typography>
           </Grid>
           
           <Grid item xs={12}>
             <TextField
               fullWidth
+              size="small"
               label="Notes"
               name="notes"
               multiline
@@ -1369,7 +1327,7 @@ const ClientForm = ({ client, onSubmit, mode = 'create' }) => {
                 disabled={loading || statusLoading}
                 startIcon={loading ? <CircularProgress size={20} /> : null}
               >
-                {mode === 'create' ? 'Create Client' : 'Update Client'}
+                {mode === 'create' ? 'Create Contact' : 'Update Contact'}
               </Button>
             </Box>
           </Grid>

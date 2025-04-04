@@ -12,29 +12,78 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  TablePagination,
-  Chip,
   TextField,
   InputAdornment,
-  Grid,
-  FormControl,
-  InputLabel,
   Select,
   MenuItem,
-  Tooltip,
   IconButton,
-  CircularProgress
+  CircularProgress,
+  Stack,
+  Chip,
+  Tabs,
+  Tab,
+  styled
 } from '@mui/material';
 import {
   Add as AddIcon,
   Search as SearchIcon,
-  Refresh as RefreshIcon,
-  Edit as EditIcon,
-  Visibility as ViewIcon,
-  Archive as ArchiveIcon
+  FilterList as FilterListIcon
 } from '@mui/icons-material';
 import clientService from '../../services/clientService/clientService';
 import MainLayout from '../../components/layout/MainLayout';
+
+// Styled components to match the exact style from the image
+const StyledTab = styled(Tab)(({ theme }) => ({
+  textTransform: 'none',
+  fontWeight: 600,
+  fontSize: '14px',
+  minWidth: '80px',
+  padding: '8px 16px',
+}));
+
+const StyledTableCell = styled(TableCell)(({ theme }) => ({
+  padding: '16px 20px',
+  fontSize: '14px',
+  borderBottom: '1px solid #e0e0e0',
+}));
+
+const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
+  padding: '12px 20px',
+  fontSize: '12px',
+  fontWeight: 600,
+  color: '#5f6368',
+  backgroundColor: '#f8f9fa',
+  borderBottom: '1px solid #e0e0e0',
+}));
+
+// Customized table header cells with specific widths
+const NameHeaderCell = styled(StyledTableHeaderCell)({
+  width: '20%',
+});
+
+const TagsHeaderCell = styled(StyledTableHeaderCell)({
+  width: '15%',
+});
+
+const EmailHeaderCell = styled(StyledTableHeaderCell)({
+  width: '20%',
+});
+
+const PhoneHeaderCell = styled(StyledTableHeaderCell)({
+  width: '15%',
+});
+
+const AddressHeaderCell = styled(StyledTableHeaderCell)({
+  width: '20%',
+});
+
+const StatusHeaderCell = styled(StyledTableHeaderCell)({
+  width: '10%',
+});
+
+const ActionsHeaderCell = styled(StyledTableHeaderCell)({
+  width: '10%',
+});
 
 const ClientsPage = () => {
   const [clients, setClients] = useState([]);
@@ -48,6 +97,7 @@ const ClientsPage = () => {
   });
   const [statuses, setStatuses] = useState([]);
   const [includeArchived, setIncludeArchived] = useState(false);
+  const [activeTab, setActiveTab] = useState(0);
 
   // Fetch clients and statuses on component mount
   useEffect(() => {
@@ -59,9 +109,13 @@ const ClientsPage = () => {
         const statusesData = await clientService.getClientStatuses();
         setStatuses(statusesData);
         
-        // Fetch clients
+        // Fetch clients with type filter based on active tab
+        let typeFilter = '';
+        if (activeTab === 1) typeFilter = 'Individual';
+        if (activeTab === 2) typeFilter = 'Organization';
+        
         const clientsData = await clientService.getAllClients(
-          { ...filters, search: search || undefined },
+          { ...filters, type: typeFilter, search: search || undefined },
           includeArchived
         );
         setClients(clientsData);
@@ -74,7 +128,7 @@ const ClientsPage = () => {
     };
     
     fetchData();
-  }, [filters, search, includeArchived]);
+  }, [filters, search, includeArchived, activeTab]);
 
   // Handle filter changes
   const handleFilterChange = (event) => {
@@ -92,6 +146,12 @@ const ClientsPage = () => {
     setPage(0);
   };
 
+  // Handle tab change
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
+    setPage(0);
+  };
+
   // Handle pagination changes
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -106,8 +166,13 @@ const ClientsPage = () => {
   const handleRefresh = async () => {
     try {
       setLoading(true);
+      // Apply type filter based on active tab
+      let typeFilter = '';
+      if (activeTab === 1) typeFilter = 'Individual';
+      if (activeTab === 2) typeFilter = 'Organization';
+      
       const data = await clientService.getAllClients(
-        { ...filters, search: search || undefined },
+        { ...filters, type: typeFilter, search: search || undefined },
         includeArchived
       );
       setClients(data);
@@ -141,203 +206,273 @@ const ClientsPage = () => {
     return client.organization_name;
   };
 
-  // Display the client email or phone
-  const getClientContact = (client) => {
-    return client.primary_email || client.primary_phone || 'No contact info';
+  // Get client notes (tags)
+  const getClientNotes = (client) => {
+    if (client.tags && Array.isArray(client.tags) && client.tags.length > 0) {
+      return client.tags.join(', ');
+    }
+    return client.notes || 'Organization';
+  };
+
+  // Get client address
+  const getClientAddress = (client) => {
+    if (client.addresses && client.addresses.length > 0) {
+      const address = client.addresses[0];
+      return `${address.street || ''}, ${address.city || ''}, ${address.state || ''} ${address.postal_code || ''}`.trim().replace(/^,\s*/, '').replace(/,\s*,/g, ',');
+    }
+    return 'N/A';
   };
 
   return (
     <MainLayout>
       <Container maxWidth="xl">
         <Box sx={{ py: 3 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h4" component="h1">
-              Clients
-            </Typography>
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<AddIcon />}
-              component={Link}
-              to="/clients/new"
-            >
-              New Client
-            </Button>
-          </Box>
+          <Paper sx={{ borderRadius: '8px', overflow: 'hidden', boxShadow: '0px 1px 3px rgba(0,0,0,0.1)' }}>
+            {/* Tabs */}
+            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+              <Tabs 
+                value={activeTab} 
+                onChange={handleTabChange}
+                sx={{ 
+                  '.MuiTabs-indicator': { backgroundColor: '#1a73e8', height: '3px' },
+                  ml: 2,
+                  minHeight: '48px',
+                }}
+              >
+                <StyledTab label="All" />
+                <StyledTab label="People" />
+                <StyledTab label="Companies" />
+              </Tabs>
+            </Box>
 
-          {/* Filters and Search */}
-          <Paper sx={{ p: 2, mb: 3 }}>
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} md={4}>
+            {/* Filters and Actions Bar */}
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              flexWrap: 'wrap',
+              p: 2,
+              borderBottom: '1px solid #e0e0e0'
+            }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2, flex: 1 }}>
+                {/* Search Bar */}
                 <TextField
-                  fullWidth
-                  placeholder="Search clients..."
+                  placeholder="Search..."
+                  size="small"
                   value={search}
                   onChange={handleSearchChange}
+                  sx={{ 
+                    minWidth: '250px', 
+                    maxWidth: '300px',
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '4px',
+                    }
+                  }}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <SearchIcon />
+                        <SearchIcon fontSize="small" sx={{ color: '#5f6368' }} />
                       </InputAdornment>
                     ),
                   }}
                 />
-              </Grid>
-              <Grid item xs={6} md={2}>
-                <FormControl fullWidth>
-                  <InputLabel>Status</InputLabel>
-                  <Select
-                    name="status"
-                    value={filters.status}
-                    onChange={handleFilterChange}
-                    label="Status"
-                  >
-                    <MenuItem value="">All Statuses</MenuItem>
-                    {statuses.map((status) => (
-                      <MenuItem key={status.id} value={status.id}>
-                        {status.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={6} md={2}>
-                <FormControl fullWidth>
-                  <InputLabel>Type</InputLabel>
-                  <Select
-                    name="type"
-                    value={filters.type}
-                    onChange={handleFilterChange}
-                    label="Type"
-                  >
-                    <MenuItem value="">All Types</MenuItem>
-                    <MenuItem value="Individual">Individual</MenuItem>
-                    <MenuItem value="Organization">Organization</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={6} md={2}>
-                <FormControl fullWidth>
-                  <InputLabel>Show Archived</InputLabel>
-                  <Select
-                    value={includeArchived}
-                    onChange={(e) => setIncludeArchived(e.target.value)}
-                    label="Show Archived"
-                  >
-                    <MenuItem value={false}>Hide Archived</MenuItem>
-                    <MenuItem value={true}>Show Archived</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={6} md={2} sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <Tooltip title="Refresh">
-                  <IconButton onClick={handleRefresh} color="primary">
-                    <RefreshIcon />
-                  </IconButton>
-                </Tooltip>
-              </Grid>
-            </Grid>
-          </Paper>
+                
+                <Button
+                  variant="outlined"
+                  startIcon={<FilterListIcon />}
+                  size="medium"
+                  sx={{ 
+                    ml: 2,
+                    borderColor: '#dadce0',
+                    color: '#3c4043',
+                    '&:hover': {
+                      borderColor: '#bdc1c6',
+                      backgroundColor: '#f8f9fa'
+                    }
+                  }}
+                >
+                  Filters
+                </Button>
+              </Box>
+              
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                component={Link}
+                to="/clients/new"
+                size="medium"
+                sx={{ 
+                  bgcolor: '#1a73e8', 
+                  '&:hover': { bgcolor: '#1765cc' },
+                  borderRadius: '4px',
+                  textTransform: 'none',
+                  fontWeight: 500,
+                  boxShadow: 'none'
+                }}
+              >
+                Add New Client
+              </Button>
+            </Box>
 
-          {/* Clients Table */}
-          <Paper>
+            {/* Clients Table */}
             <TableContainer>
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Type</TableCell>
-                    <TableCell>Contact</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Date Added</TableCell>
-                    <TableCell align="right">Actions</TableCell>
+                    <NameHeaderCell>Name</NameHeaderCell>
+                    <TagsHeaderCell>Tags</TagsHeaderCell>
+                    <EmailHeaderCell>Email</EmailHeaderCell>
+                    <PhoneHeaderCell>Phone</PhoneHeaderCell>
+                    <AddressHeaderCell>Address</AddressHeaderCell>
+                    <StatusHeaderCell>Status</StatusHeaderCell>
+                    <ActionsHeaderCell align="center">Actions</ActionsHeaderCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
-                        <CircularProgress />
-                      </TableCell>
+                      <StyledTableCell colSpan={7} align="center" sx={{ py: 3 }}>
+                        <CircularProgress size={24} sx={{ color: '#1a73e8' }} />
+                      </StyledTableCell>
                     </TableRow>
                   ) : clients.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
+                      <StyledTableCell colSpan={7} align="center" sx={{ py: 3 }}>
                         No clients found. Try adjusting your filters or add a new client.
-                      </TableCell>
+                      </StyledTableCell>
                     </TableRow>
                   ) : (
                     clients
                       .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                       .map((client) => (
                         <TableRow key={client.id} hover>
-                          <TableCell>{getClientName(client)}</TableCell>
-                          <TableCell>{client.client_type}</TableCell>
-                          <TableCell>{getClientContact(client)}</TableCell>
-                          <TableCell>
+                          <StyledTableCell>
+                            <Typography 
+                              variant="body2" 
+                              component={Link} 
+                              to={`/clients/${client.id}`}
+                              sx={{ 
+                                color: '#1a73e8', 
+                                textDecoration: 'none',
+                                fontWeight: 500,
+                                '&:hover': { textDecoration: 'underline' }
+                              }}
+                            >
+                              {getClientName(client)}
+                            </Typography>
+                          </StyledTableCell>
+                          <StyledTableCell>{getClientNotes(client)}</StyledTableCell>
+                          <StyledTableCell>{client.primary_email || 'N/A'}</StyledTableCell>
+                          <StyledTableCell>{client.primary_phone || 'N/A'}</StyledTableCell>
+                          <StyledTableCell>{getClientAddress(client)}</StyledTableCell>
+                          <StyledTableCell>
                             {client.status ? (
                               <Chip
                                 label={client.status.name}
                                 size="small"
                                 sx={{ 
-                                  bgcolor: client.status.color || 'grey.500',
-                                  color: 'white'
+                                  bgcolor: client.status.name === 'Active' ? '#e6f4ea' : 
+                                          client.status.name === 'Pending' ? '#fff8e6' : 
+                                          client.status.name === 'Inactive' ? '#f5f5f5' : 'grey.100',
+                                  color: client.status.name === 'Active' ? '#137333' : 
+                                          client.status.name === 'Pending' ? '#b06000' : 
+                                          client.status.name === 'Inactive' ? '#5f6368' : 'text.primary',
+                                  fontWeight: 500,
+                                  borderRadius: '4px',
+                                  height: '24px'
                                 }}
                               />
                             ) : (
                               'Unknown'
                             )}
-                          </TableCell>
-                          <TableCell>
-                            {new Date(client.date_added).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell align="right">
-                            <Tooltip title="View">
-                              <IconButton 
-                                component={Link} 
-                                to={`/clients/${client.id}`}
-                                size="small"
-                              >
-                                <ViewIcon />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Edit">
-                              <IconButton 
+                          </StyledTableCell>
+                          <StyledTableCell align="center">
+                            <Stack direction="row" spacing={1} justifyContent="center">
+                              <Button 
+                                size="small" 
+                                variant="outlined" 
                                 component={Link} 
                                 to={`/clients/${client.id}/edit`}
-                                size="small"
-                                color="primary"
+                                sx={{
+                                  color: '#5f6368',
+                                  borderColor: '#dadce0',
+                                  textTransform: 'none',
+                                  fontWeight: 500,
+                                  minWidth: '60px',
+                                  padding: '2px 8px',
+                                  fontSize: '13px'
+                                }}
                               >
-                                <EditIcon />
-                              </IconButton>
-                            </Tooltip>
-                            {!client.is_archived && (
-                              <Tooltip title="Archive">
-                                <IconButton 
-                                  onClick={() => handleArchive(client.id)}
-                                  size="small"
-                                  color="warning"
-                                >
-                                  <ArchiveIcon />
-                                </IconButton>
-                              </Tooltip>
-                            )}
-                          </TableCell>
+                                Edit
+                              </Button>
+                              <Button 
+                                size="small" 
+                                variant="outlined" 
+                                component={Link} 
+                                to={`/clients/${client.id}`}
+                                sx={{
+                                  color: '#5f6368',
+                                  borderColor: '#dadce0',
+                                  textTransform: 'none',
+                                  fontWeight: 500,
+                                  minWidth: '60px',
+                                  padding: '2px 8px',
+                                  fontSize: '13px'
+                                }}
+                              >
+                                View
+                              </Button>
+                            </Stack>
+                          </StyledTableCell>
                         </TableRow>
                       ))
                   )}
                 </TableBody>
               </Table>
             </TableContainer>
-            <TablePagination
-              rowsPerPageOptions={[5, 10, 25, 50]}
-              component="div"
-              count={clients.length}
-              rowsPerPage={rowsPerPage}
-              page={page}
-              onPageChange={handleChangePage}
-              onRowsPerPageChange={handleChangeRowsPerPage}
-            />
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', p: 2 }}>
+              <Typography variant="body2" color="#5f6368" sx={{ mr: 2, fontSize: '14px' }}>
+                Rows per page:
+              </Typography>
+              <Select
+                value={rowsPerPage}
+                onChange={handleChangeRowsPerPage}
+                displayEmpty
+                size="small"
+                sx={{ 
+                  minWidth: 60, 
+                  mr: 2,
+                  fontSize: '14px',
+                  color: '#5f6368',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    border: 'none'
+                  }
+                }}
+              >
+                <MenuItem value={10}>10</MenuItem>
+                <MenuItem value={25}>25</MenuItem>
+                <MenuItem value={50}>50</MenuItem>
+              </Select>
+              <Typography variant="body2" color="#5f6368" sx={{ mr: 2, fontSize: '14px' }}>
+                {page * rowsPerPage + 1}–{Math.min((page + 1) * rowsPerPage, clients.length)} of {clients.length}
+              </Typography>
+              <IconButton 
+                disabled={page === 0} 
+                onClick={(e) => handleChangePage(e, page - 1)}
+                size="small"
+                sx={{ color: '#5f6368' }}
+              >
+                &lt;
+              </IconButton>
+              <IconButton 
+                disabled={page >= Math.ceil(clients.length / rowsPerPage) - 1} 
+                onClick={(e) => handleChangePage(e, page + 1)}
+                size="small"
+                sx={{ color: '#5f6368' }}
+              >
+                &gt;
+              </IconButton>
+            </Box>
           </Paper>
         </Box>
       </Container>
