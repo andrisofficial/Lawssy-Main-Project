@@ -1,0 +1,35 @@
+[33mcommit c187f73891491769187411c7a96ef7d771bcbf02[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: andrisofficial <andrisofficial444@gmail.com>
+Date:   Sat Apr 5 06:37:20 2025 +0530
+
+    Reordered sidebar navigation items and updated document components
+
+ implementation-plan.mdc                        |    5 [32m+[m
+ package-lock.json                              |  533 [32m+++++++++++[m
+ package.json                                   |    2 [32m+[m
+ server.js                                      |   57 [32m++[m
+ src/App.js                                     |    4 [32m+[m
+ src/components/TimeTracking/QuickTimer.js      |    2 [32m+[m[31m-[m
+ src/components/calendar/MonthView.js           |    6 [32m+[m[31m-[m
+ src/components/documents/DocumentAnalytics.js  |   10 [32m+[m[31m-[m
+ src/components/documents/DocumentPreview.js    |  412 [32m+++++++++[m
+ src/components/documents/DocumentRepository.js |  388 [32m++++[m[31m----[m
+ src/components/documents/DocumentSearch.js     |    4 [32m+[m[31m-[m
+ src/components/documents/DocumentTemplates.js  |  166 [32m++[m[31m--[m
+ src/components/documents/DocumentUpload.js     |    4 [32m+[m[31m-[m
+ src/components/layout/Header.js                |   13 [31m-[m
+ src/components/layout/MainLayout.js            |    2 [32m+[m[31m-[m
+ src/components/layout/Sidebar.js               |   25 [32m+[m[31m-[m
+ src/components/matters/MatterDetailHeader.js   |   10 [32m+[m[31m-[m
+ src/components/matters/MatterTabs.js           |    6 [32m+[m[31m-[m
+ src/components/matters/NewMatterForm.js        | 1144 [32m+++++++++++++[m[31m-----------[m
+ src/components/matters/RecentMattersWidget.js  |    4 [32m+[m[31m-[m
+ src/pages/DocumentManagementPage.js            |  288 [32m++++[m[31m--[m
+ src/pages/MatterDetailPage.js                  |    2 [32m+[m[31m-[m
+ src/pages/MatterManagementPage.js              |  664 [32m+++++++++[m[31m-----[m
+ src/pages/clients/ClientsPage.js               |  584 [32m+++++++++++[m[31m-[m
+ src/pages/matters/CreateMatterPage.js          |   41 [32m+[m
+ src/services/clientService/clientService.js    |  134 [32m++[m[31m-[m
+ src/services/documentService.js                |   15 [32m+[m
+ src/theme.js                                   |   10 [32m+[m[31m-[m
+ 28 files changed, 3273 insertions(+), 1262 deletions(-)
