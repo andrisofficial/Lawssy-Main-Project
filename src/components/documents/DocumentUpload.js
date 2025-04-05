@@ -52,7 +52,7 @@ const DocumentUpload = () => {
 
   // Sample data
   const availableTags = ['Contract', 'NDA', 'Patent', 'Lease', 'Template', 'Client', 'Financial', 'Legal'];
-  const availableFolders = ['My Documents', 'Contracts', 'Client Files', 'Templates', 'Legal Research'];
+  const availableFolders = ['My Documents', 'Contracts', 'Client Files', 'Templates'];
 
   const handleDrag = (e) => {
     e.preventDefault();
@@ -190,7 +190,7 @@ const DocumentUpload = () => {
       <Box
         sx={{
           border: `2px dashed ${dragActive ? theme.palette.primary.main : theme.palette.divider}`,
-          borderRadius: '8px',
+          borderRadius: '6px',
           p: 3,
           display: 'flex',
           flexDirection: 'column',

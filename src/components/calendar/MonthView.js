@@ -217,7 +217,7 @@ const MonthView = () => {
                   value={selectedEventType}
                   onChange={handleEventTypeChange}
                   label="Event Type"
-                  sx={{ borderRadius: '8px' }}
+                  sx={{ borderRadius: '6px' }}
                 >
                   <MenuItem value="all">All Events</MenuItem>
                   <MenuItem value="appointment">Appointments</MenuItem>
@@ -249,7 +249,7 @@ const MonthView = () => {
                   }}
                   sx={{ 
                     textTransform: 'none',
-                    borderRadius: '8px',
+                    borderRadius: '6px',
                     boxShadow: 'none',
                     mr: 1
                   }}
@@ -260,7 +260,7 @@ const MonthView = () => {
                 <IconButton 
                   onClick={() => setViewMode(viewMode === 'month' ? 'week' : 'month')}
                   color="primary"
-                  sx={{ borderRadius: '8px' }}
+                  sx={{ borderRadius: '6px' }}
                 >
                   {viewMode === 'month' ? <ViewWeekIcon /> : <CalendarViewMonthIcon />}
                 </IconButton>

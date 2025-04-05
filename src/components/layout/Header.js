@@ -44,19 +44,6 @@ const Header = ({ title }) => {
           </Typography>
         </Box>
 
-        {/* Page Title */}
-        <Typography
-          variant="h6"
-          component="div"
-          sx={{
-            fontWeight: 600,
-            fontSize: '1.125rem',
-            ml: { xs: 0, sm: 2 }
-          }}
-        >
-          {title}
-        </Typography>
-
         <Box sx={{ flexGrow: 1 }} />
 
         {/* Search Bar */}

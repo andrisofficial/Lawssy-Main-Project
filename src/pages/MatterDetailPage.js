@@ -54,7 +54,7 @@ const MatterDetailPage = () => {
             <Paper 
               sx={{ 
                 p: 4, 
-                borderRadius: '8px', 
+                borderRadius: '6px', 
                 display: 'flex', 
                 flexDirection: 'column',
                 alignItems: 'center',

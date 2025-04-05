@@ -50,6 +50,11 @@ const Sidebar = () => {
       path: '/dashboard' 
     },
     { 
+      text: 'Calendar', 
+      icon: <CalendarMonthIcon />, 
+      path: '/calendar' 
+    },
+    { 
       text: 'Time Tracking', 
       icon: <AccessTimeIcon />, 
       path: '/time-tracking' 
@@ -60,29 +65,19 @@ const Sidebar = () => {
       path: '/billing' 
     },
     { 
-      text: 'Calendar', 
-      icon: <CalendarMonthIcon />, 
-      path: '/calendar' 
-    },
-    { 
       text: 'Matters', 
       icon: <BusinessCenterIcon />, 
       path: '/matters' 
     },
     { 
-      text: 'Clients', 
-      icon: <PeopleIcon />, 
-      path: '/clients' 
-    },
-    { 
-      text: 'Document Management', 
+      text: 'Document', 
       icon: <FolderIcon />, 
       path: '/documents' 
     },
     { 
-      text: 'Legal Research', 
-      icon: <SearchIcon />, 
-      path: '/legal-research' 
+      text: 'Clients', 
+      icon: <PeopleIcon />, 
+      path: '/clients' 
     },
   ];
 
@@ -112,7 +107,7 @@ const Sidebar = () => {
             minHeight: 48,
             px: 2.5,
             py: 1,
-            borderRadius: '8px',
+            borderRadius: '6px',
             mx: 1,
             backgroundColor: isActive ? COLORS.active : 'transparent',
             '&:hover': {

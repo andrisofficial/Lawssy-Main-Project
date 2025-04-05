@@ -402,4 +402,19 @@ export const toggleAutomaticBackup = async (enabled) => {
     console.error('Error toggling automatic backup:', error);
     throw error;
   }
+};
+
+// Document Preview API call
+export const previewDocument = async (documentId, options = {}) => {
+  try {
+    const params = { ...options };
+    const response = await axios.get(`${API_URL}/documents/${documentId}/preview`, { 
+      params,
+      responseType: 'blob' 
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error previewing document:', error);
+    throw error;
+  }
 }; 

@@ -47,7 +47,8 @@ import {
   CreateNewFolder as CreateNewFolderIcon,
   FileCopy as FileCopyIcon,
   Lock as LockIcon,
-  LockOpen as LockOpenIcon
+  LockOpen as LockOpenIcon,
+  Visibility as VisibilityIcon
 } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
 
@@ -129,12 +130,6 @@ const sampleFolders = [
     name: 'Templates',
     items: 12,
     modified: '2023-06-10'
-  },
-  {
-    id: 4,
-    name: 'Legal Research',
-    items: 8,
-    modified: '2023-06-05'
   }
 ];
 
@@ -229,7 +224,8 @@ const DocumentRepository = () => {
   };
 
   const handleShareSubmit = () => {
-    // In a real app, this would send sharing permissions to the server
+    // Handle sharing logic here
+    // For now, just close the dialog
     setShareDialog(false);
     setSelectedUsers([]);
     setSelectedPermissions(['view']);
@@ -245,6 +241,11 @@ const DocumentRepository = () => {
 
   const handlePermissionChange = (event) => {
     setSelectedPermissions(event.target.value);
+  };
+
+  const handlePreviewDocument = (document) => {
+    // Navigate to document preview page
+    console.log('Preview document:', document);
   };
 
   const getFileIcon = (type) => {
@@ -264,208 +265,118 @@ const DocumentRepository = () => {
 
   return (
     <Box>
-      {/* Breadcrumb Navigation */}
-      <Breadcrumbs 
-        separator={<NavigateNextIcon fontSize="small" />} 
-        aria-label="document-navigation"
-        sx={{ mb: 3 }}
-      >
-        {currentPath.map((path, index) => (
-          <Typography
-            key={index}
-            color={index === currentPath.length - 1 ? 'text.primary' : 'text.secondary'}
-            sx={{ 
-              cursor: 'pointer',
-              fontWeight: index === currentPath.length - 1 ? 600 : 400
-            }}
-            onClick={() => handleBreadcrumbClick(index)}
-          >
-            {path}
-          </Typography>
-        ))}
-      </Breadcrumbs>
-
-      {/* Action Buttons */}
-      <Box sx={{ display: 'flex', mb: 3, gap: 2 }}>
-        <Button 
-          variant="contained" 
-          startIcon={<CloudUploadIcon />}
-          sx={{ 
-            bgcolor: theme.palette.primary.main,
-            '&:hover': {
-              bgcolor: theme.palette.primary.dark
-            }
-          }}
-        >
-          Upload Files
-        </Button>
-        <Button 
-          variant="outlined" 
-          startIcon={<CreateNewFolderIcon />}
-          onClick={handleNewFolder}
-        >
-          New Folder
-        </Button>
-      </Box>
-
-      {/* Folders Section */}
-      {folders.length > 0 && (
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>Folders</Typography>
-          <Grid container spacing={2}>
-            {folders.map((folder) => (
-              <Grid item xs={12} sm={6} md={4} lg={3} key={folder.id}>
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: 2,
-                    border: `1px solid ${theme.palette.divider}`,
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    '&:hover': {
-                      boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
-                      borderColor: theme.palette.primary.main
-                    }
-                  }}
-                  onClick={() => handleFolderClick(folder)}
+      {/* Documents Table */}
+      <TableContainer component={Paper} elevation={0} sx={{ border: `1px solid ${theme.palette.divider}` }}>
+        <Table sx={{ minWidth: 650 }} aria-label="documents table">
+          <TableHead sx={{ bgcolor: 'rgba(0, 0, 0, 0.02)' }}>
+            <TableRow>
+              <TableCell>Name</TableCell>
+              <TableCell>Tags</TableCell>
+              <TableCell>Modified</TableCell>
+              <TableCell>Size</TableCell>
+              <TableCell>Created By</TableCell>
+              <TableCell align="right">Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {documents
+              .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+              .map((document) => (
+                <TableRow
+                  key={document.id}
+                  sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
                 >
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <TableCell component="th" scope="row">
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <FolderIcon sx={{ color: theme.palette.primary.main, mr: 1, fontSize: 40 }} />
-                      <Box>
-                        <Typography variant="subtitle1" noWrap sx={{ maxWidth: 150 }}>
-                          {folder.name}
+                      {getFileIcon(document.type)}
+                      <Box sx={{ ml: 2 }}>
+                        <Typography 
+                          variant="body1" 
+                          sx={{ 
+                            cursor: 'pointer',
+                            '&:hover': { color: theme.palette.primary.main, textDecoration: 'underline' }
+                          }}
+                          onClick={() => handlePreviewDocument(document)}
+                        >
+                          {document.name}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          {folder.items} items
+                          {document.type.toUpperCase()}
                         </Typography>
                       </Box>
+                      {document.locked && (
+                        <Tooltip title="This document is locked">
+                          <LockIcon sx={{ ml: 1, fontSize: 16, color: 'warning.main' }} />
+                        </Tooltip>
+                      )}
                     </Box>
-                    <IconButton
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleMenuOpen(e, folder);
-                      }}
-                    >
-                      <MoreVertIcon />
-                    </IconButton>
-                  </Box>
-                </Paper>
-              </Grid>
-            ))}
-          </Grid>
-        </Box>
-      )}
-
-      {/* Documents Table */}
-      <Box>
-        <Typography variant="h6" sx={{ mb: 2 }}>Documents</Typography>
-        <TableContainer component={Paper} elevation={0} sx={{ border: `1px solid ${theme.palette.divider}` }}>
-          <Table sx={{ minWidth: 650 }} aria-label="documents table">
-            <TableHead sx={{ bgcolor: 'rgba(0, 0, 0, 0.02)' }}>
-              <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Tags</TableCell>
-                <TableCell>Modified</TableCell>
-                <TableCell>Size</TableCell>
-                <TableCell>Created By</TableCell>
-                <TableCell align="right">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {documents
-                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                .map((document) => (
-                  <TableRow
-                    key={document.id}
-                    sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-                  >
-                    <TableCell component="th" scope="row">
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        {getFileIcon(document.type)}
-                        <Box sx={{ ml: 2 }}>
-                          <Typography variant="body1">{document.name}</Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {document.type.toUpperCase()}
-                          </Typography>
-                        </Box>
-                        {document.locked && (
-                          <Tooltip title="This document is locked">
-                            <LockIcon sx={{ ml: 1, fontSize: 16, color: 'warning.main' }} />
-                          </Tooltip>
-                        )}
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {document.tags.map((tag, index) => (
-                          <Chip
-                            key={index}
-                            label={tag}
-                            size="small"
-                            sx={{ 
-                              bgcolor: 'rgba(0, 0, 0, 0.04)',
-                              '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.08)' }
-                            }}
-                          />
-                        ))}
-                      </Box>
-                    </TableCell>
-                    <TableCell>{document.modified}</TableCell>
-                    <TableCell>{document.size}</TableCell>
-                    <TableCell>{document.createdBy}</TableCell>
-                    <TableCell align="right">
-                      <Tooltip title="Download">
-                        <IconButton size="small">
-                          <DownloadIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Share">
-                        <IconButton 
+                  </TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {document.tags.map((tag, index) => (
+                        <Chip
+                          key={index}
+                          label={tag}
                           size="small"
-                          onClick={() => {
-                            setSelectedItem(document);
-                            handleShare();
+                          sx={{ 
+                            bgcolor: 'rgba(0, 0, 0, 0.04)',
+                            '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.08)' }
                           }}
-                        >
-                          <ShareIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Version History">
-                        <IconButton 
-                          size="small"
-                          onClick={() => {
-                            setSelectedItem(document);
-                            handleVersionHistory();
-                          }}
-                        >
-                          <HistoryIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <IconButton
+                        />
+                      ))}
+                    </Box>
+                  </TableCell>
+                  <TableCell>{document.modified}</TableCell>
+                  <TableCell>{document.size}</TableCell>
+                  <TableCell>{document.createdBy}</TableCell>
+                  <TableCell align="right">
+                    <Tooltip title="Preview">
+                      <IconButton 
+                        size="small"
+                        onClick={() => handlePreviewDocument(document)}
+                      >
+                        <VisibilityIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Download">
+                      <IconButton size="small">
+                        <DownloadIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Share">
+                      <IconButton 
+                        size="small"
+                        onClick={() => {
+                          setSelectedItem(document);
+                          handleShare();
+                        }}
+                      >
+                        <ShareIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="More">
+                      <IconButton 
                         size="small"
                         onClick={(e) => handleMenuOpen(e, document)}
                       >
                         <MoreVertIcon fontSize="small" />
                       </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-            </TableBody>
-          </Table>
-          <TablePagination
-            rowsPerPageOptions={[5, 10, 25]}
-            component="div"
-            count={documents.length}
-            rowsPerPage={rowsPerPage}
-            page={page}
-            onPageChange={handleChangePage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-          />
-        </TableContainer>
-      </Box>
+                    </Tooltip>
+                  </TableCell>
+                </TableRow>
+              ))}
+          </TableBody>
+        </Table>
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25]}
+          component="div"
+          count={documents.length}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+        />
+      </TableContainer>
 
       {/* Context Menu */}
       <Menu
@@ -473,29 +384,47 @@ const DocumentRepository = () => {
         open={Boolean(anchorEl)}
         onClose={handleMenuClose}
         PaperProps={{
-          elevation: 1,
-          sx: { minWidth: 180 }
+          elevation: 3,
+          sx: { minWidth: 180, maxWidth: 280 }
         }}
       >
         <MenuItem onClick={handleMenuClose}>
-          <EditIcon fontSize="small" sx={{ mr: 1 }} />
+          <EditIcon fontSize="small" sx={{ mr: 1.5 }} />
           Edit
         </MenuItem>
         <MenuItem onClick={handleMenuClose}>
-          <DownloadIcon fontSize="small" sx={{ mr: 1 }} />
+          <FileCopyIcon fontSize="small" sx={{ mr: 1.5 }} />
+          Make a Copy
+        </MenuItem>
+        <MenuItem onClick={handleMenuClose}>
+          <DownloadIcon fontSize="small" sx={{ mr: 1.5 }} />
           Download
         </MenuItem>
         <MenuItem onClick={handleShare}>
-          <ShareIcon fontSize="small" sx={{ mr: 1 }} />
+          <ShareIcon fontSize="small" sx={{ mr: 1.5 }} />
           Share
         </MenuItem>
+        <Divider />
         <MenuItem onClick={handleVersionHistory}>
-          <HistoryIcon fontSize="small" sx={{ mr: 1 }} />
+          <HistoryIcon fontSize="small" sx={{ mr: 1.5 }} />
           Version History
+        </MenuItem>
+        <MenuItem onClick={handleMenuClose}>
+          {selectedItem && selectedItem.locked ? (
+            <>
+              <LockOpenIcon fontSize="small" sx={{ mr: 1.5 }} />
+              Unlock
+            </>
+          ) : (
+            <>
+              <LockIcon fontSize="small" sx={{ mr: 1.5 }} />
+              Lock
+            </>
+          )}
         </MenuItem>
         <Divider />
         <MenuItem onClick={handleMenuClose} sx={{ color: 'error.main' }}>
-          <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
+          <DeleteIcon fontSize="small" sx={{ mr: 1.5 }} />
           Delete
         </MenuItem>
       </Menu>
@@ -507,7 +436,6 @@ const DocumentRepository = () => {
           <TextField
             autoFocus
             margin="dense"
-            id="folderName"
             label="Folder Name"
             type="text"
             fullWidth
@@ -523,18 +451,17 @@ const DocumentRepository = () => {
       </Dialog>
 
       {/* Share Dialog */}
-      <Dialog open={shareDialog} onClose={() => setShareDialog(false)} maxWidth="sm" fullWidth>
+      <Dialog 
+        open={shareDialog} 
+        onClose={() => setShareDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>Share Document</DialogTitle>
         <DialogContent>
-          <Typography variant="subtitle1" sx={{ mb: 2 }}>
-            {selectedItem?.name}
-          </Typography>
-          
-          <FormControl fullWidth sx={{ mb: 3 }}>
-            <InputLabel id="share-users-label">Share with</InputLabel>
+          <FormControl fullWidth margin="normal">
+            <InputLabel>Share with</InputLabel>
             <Select
-              labelId="share-users-label"
-              id="share-users"
               multiple
               value={selectedUsers}
               onChange={handleUserSelectionChange}
@@ -550,18 +477,16 @@ const DocumentRepository = () => {
             </Select>
           </FormControl>
           
-          <FormControl fullWidth>
-            <InputLabel id="permissions-label">Permissions</InputLabel>
+          <FormControl fullWidth margin="normal">
+            <InputLabel>Permissions</InputLabel>
             <Select
-              labelId="permissions-label"
-              id="permissions"
               multiple
               value={selectedPermissions}
               onChange={handlePermissionChange}
               input={<OutlinedInput label="Permissions" />}
-              renderValue={(selected) => selected.map(s => {
-                const permission = permissions.find(p => p.value === s);
-                return permission ? permission.label : s;
+              renderValue={(selected) => selected.map(p => {
+                const permission = permissions.find(perm => perm.value === p);
+                return permission ? permission.label : p;
               }).join(', ')}
             >
               {permissions.map((permission) => (
@@ -580,13 +505,14 @@ const DocumentRepository = () => {
       </Dialog>
 
       {/* Version History Dialog */}
-      <Dialog open={versionHistoryDialog} onClose={() => setVersionHistoryDialog(false)} maxWidth="md" fullWidth>
+      <Dialog
+        open={versionHistoryDialog}
+        onClose={() => setVersionHistoryDialog(false)}
+        maxWidth="md"
+        fullWidth
+      >
         <DialogTitle>Version History</DialogTitle>
         <DialogContent>
-          <Typography variant="subtitle1" sx={{ mb: 2 }}>
-            {selectedItem?.name}
-          </Typography>
-          
           <TableContainer>
             <Table>
               <TableHead>
@@ -606,16 +532,8 @@ const DocumentRepository = () => {
                     <TableCell>{version.author}</TableCell>
                     <TableCell>{version.notes}</TableCell>
                     <TableCell align="right">
-                      <Tooltip title="Download">
-                        <IconButton size="small">
-                          <DownloadIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Restore this version">
-                        <IconButton size="small">
-                          <FileCopyIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
+                      <Button size="small">View</Button>
+                      <Button size="small">Restore</Button>
                     </TableCell>
                   </TableRow>
                 ))}

@@ -2,13 +2,8 @@ import React, { useState } from 'react';
 import {
   Box,
   Button,
-  Card,
+  Paper,
   Container,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Divider,
   FormControl,
   FormControlLabel,
   FormLabel,
@@ -18,45 +13,54 @@ import {
   MenuItem,
   Radio,
   RadioGroup,
-  Step,
-  StepLabel,
-  Stepper,
   TextField,
   Typography,
   Autocomplete,
-  useTheme
+  useTheme,
+  Divider,
+  Alert
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
 import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
 import PersonIcon from '@mui/icons-material/Person';
 import GroupIcon from '@mui/icons-material/Group';
 import DescriptionIcon from '@mui/icons-material/Description';
 import PaymentIcon from '@mui/icons-material/Payment';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import InfoIcon from '@mui/icons-material/Info';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { useNavigate } from 'react-router-dom';
 
-const NewMatterForm = ({ open, onClose }) => {
+const NewMatterForm = ({ onSubmit }) => {
   const theme = useTheme();
-  const [activeStep, setActiveStep] = useState(0);
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
+    template: '',
+    client: null,
     matterName: '',
     matterNumber: '',
+    clientReferenceNumber: '',
     practiceArea: '',
     status: 'Active',
+    matterStage: '',
+    location: '',
     openDate: new Date(),
+    closedDate: null,
+    pendingDate: null,
     description: '',
-    client: null,
     responsibleAttorney: '',
-    assignedStaff: [],
+    referringAttorney: '',
     billingType: 'Hourly',
     billingRate: '',
     retainerAmount: '',
     courtJurisdiction: '',
     statuteOfLimitations: null
   });
+  
+  const [errors, setErrors] = useState({});
+  const [submitError, setSubmitError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   // Sample data for dropdowns
   const practiceAreas = [
@@ -77,6 +81,27 @@ const NewMatterForm = ({ open, onClose }) => {
     'Pending',
     'On Hold',
     'Closed'
+  ];
+  
+  const matterStages = [
+    'Initial Consultation',
+    'Case Assessment',
+    'Pre-filing',
+    'Discovery',
+    'Negotiation',
+    'Trial Preparation',
+    'Trial',
+    'Settlement',
+    'Appeal',
+    'Post-Resolution'
+  ];
+  
+  const locations = [
+    'Main Office',
+    'Satellite Office',
+    'Remote',
+    'Court',
+    'Client Site'
   ];
 
   const billingTypes = [
@@ -102,23 +127,13 @@ const NewMatterForm = ({ open, onClose }) => {
     'Lauren Taylor'
   ];
 
-  const staffMembers = [
-    'John Smith',
-    'Patricia Garcia',
-    'Robert Lee',
-    'Jennifer Wong',
-    'Kevin O\'Brien',
-    'Maria Rodriguez',
-    'Brian Miller'
-  ];
-
-  // Steps for the wizard
-  const steps = [
-    'Basic Information',
-    'Client Information',
-    'Team Assignment',
-    'Billing Information',
-    'Additional Details'
+  // Sample templates
+  const templates = [
+    'Contract Review Template',
+    'Corporate Formation Template',
+    'Litigation Template',
+    'Estate Planning Template',
+    'Intellectual Property Template'
   ];
 
   const handleChange = (e) => {
@@ -143,525 +158,596 @@ const NewMatterForm = ({ open, onClose }) => {
     });
   };
 
-  const handleStaffChange = (event, newValue) => {
+  const handleReferringAttorneyChange = (event, newValue) => {
     setFormData({
       ...formData,
-      assignedStaff: newValue
+      referringAttorney: newValue
     });
   };
 
-  const handleNext = () => {
-    setActiveStep((prevActiveStep) => prevActiveStep + 1);
+  const handleTemplateChange = (event, newValue) => {
+    setFormData({
+      ...formData,
+      template: newValue
+    });
   };
 
-  const handleBack = () => {
-    setActiveStep((prevActiveStep) => prevActiveStep - 1);
+  const validateForm = () => {
+    const newErrors = {};
+    
+    // Basic validation for required fields
+    if (!formData.matterName) {
+      newErrors.matterName = 'Matter name is required';
+    }
+    
+    if (!formData.practiceArea) {
+      newErrors.practiceArea = 'Practice area is required';
+    }
+    
+    if (!formData.client) {
+      newErrors.client = 'Client is required';
+    }
+    
+    if (!formData.responsibleAttorney) {
+      newErrors.responsibleAttorney = 'Responsible attorney is required';
+    }
+    
+    // Validate billing rate if provided
+    if (formData.billingRate && isNaN(parseFloat(formData.billingRate))) {
+      newErrors.billingRate = 'Billing rate must be a number';
+    }
+    
+    // Validate retainer amount if provided
+    if (formData.retainerAmount && isNaN(parseFloat(formData.retainerAmount))) {
+      newErrors.retainerAmount = 'Retainer amount must be a number';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleCancel = () => {
+    navigate('/matters');
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+    
+    setLoading(true);
+    
     // Here you would submit the form data to your backend
     console.log('Form submitted with data:', formData);
-    onClose();
-  };
-
-  // Step content components
-  const BasicInformationStep = () => (
-    <Grid container spacing={3}>
-      <Grid item xs={12}>
-        <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
-          Basic Matter Information
-        </Typography>
-      </Grid>
-      <Grid item xs={12} md={6}>
-        <TextField
-          label="Matter Name"
-          name="matterName"
-          value={formData.matterName}
-          onChange={handleChange}
-          fullWidth
-          required
-          placeholder="e.g., Johnson v. Smith"
-        />
-      </Grid>
-      <Grid item xs={12} md={6}>
-        <TextField
-          label="Matter Number"
-          name="matterNumber"
-          value={formData.matterNumber}
-          onChange={handleChange}
-          fullWidth
-          placeholder="e.g., LIT-2023-001 (Auto-generated if left blank)"
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                #
-              </InputAdornment>
-            ),
-          }}
-        />
-      </Grid>
-      <Grid item xs={12} md={6}>
-        <TextField
-          select
-          label="Practice Area"
-          name="practiceArea"
-          value={formData.practiceArea}
-          onChange={handleChange}
-          fullWidth
-          required
-        >
-          {practiceAreas.map((option) => (
-            <MenuItem key={option} value={option}>
-              {option}
-            </MenuItem>
-          ))}
-        </TextField>
-      </Grid>
-      <Grid item xs={12} md={6}>
-        <TextField
-          select
-          label="Status"
-          name="status"
-          value={formData.status}
-          onChange={handleChange}
-          fullWidth
-          required
-        >
-          {statuses.map((option) => (
-            <MenuItem key={option} value={option}>
-              {option}
-            </MenuItem>
-          ))}
-        </TextField>
-      </Grid>
-      <Grid item xs={12} md={6}>
-        <LocalizationProvider dateAdapter={AdapterDateFns}>
-          <DatePicker
-            label="Open Date"
-            value={formData.openDate}
-            onChange={(newValue) => handleDateChange('openDate', newValue)}
-            renderInput={(params) => <TextField {...params} fullWidth required />}
-          />
-        </LocalizationProvider>
-      </Grid>
-      <Grid item xs={12}>
-        <TextField
-          label="Matter Description"
-          name="description"
-          value={formData.description}
-          onChange={handleChange}
-          fullWidth
-          multiline
-          rows={4}
-          placeholder="Enter a brief description of the matter..."
-        />
-      </Grid>
-    </Grid>
-  );
-
-  const ClientInformationStep = () => (
-    <Grid container spacing={3}>
-      <Grid item xs={12}>
-        <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
-          Client Information
-        </Typography>
-      </Grid>
-      <Grid item xs={12}>
-        <Autocomplete
-          options={clients}
-          getOptionLabel={(option) => option.name}
-          value={formData.client}
-          onChange={handleClientChange}
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              label="Select Client"
-              required
-              fullWidth
-            />
-          )}
-        />
-      </Grid>
-      <Grid item xs={12}>
-        <Divider textAlign="center" sx={{ my: 2 }}>
-          <Typography variant="body2" color="text.secondary">
-            OR
-          </Typography>
-        </Divider>
-      </Grid>
-      <Grid item xs={12}>
-        <Button 
-          variant="outlined" 
-          fullWidth
-          sx={{ 
-            py: 1.5, 
-            borderColor: '#E5E7EB',
-            color: 'text.primary',
-            '&:hover': {
-              borderColor: theme.palette.primary.main,
-              backgroundColor: 'rgba(0, 105, 209, 0.04)'
-            }
-          }}
-        >
-          Create New Client
-        </Button>
-      </Grid>
-      <Grid item xs={12}>
-        <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 2 }}>
-          Selected Client Information
-        </Typography>
-        {formData.client ? (
-          <Box sx={{ mt: 2, p: 2, bgcolor: 'rgba(0, 105, 209, 0.04)', borderRadius: '8px' }}>
-            <Typography variant="subtitle1" fontWeight={600}>
-              {formData.client.name}
-            </Typography>
-            <Typography variant="body2">
-              {formData.client.email}
-            </Typography>
-          </Box>
-        ) : (
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            No client selected. Please select an existing client or create a new one.
-          </Typography>
-        )}
-      </Grid>
-      <Grid item xs={12}>
-        <Box sx={{ mt: 2, p: 2, bgcolor: 'rgba(236, 253, 245, 1)', borderRadius: '8px', display: 'flex', alignItems: 'flex-start' }}>
-          <CheckCircleIcon sx={{ color: '#10B981', mr: 1, mt: 0.5 }} />
-          <Box>
-            <Typography variant="subtitle2" fontWeight={600} color="#10B981">
-              Conflict Check Passed
-            </Typography>
-            <Typography variant="body2">
-              No conflicts found with this client.
-            </Typography>
-          </Box>
-        </Box>
-      </Grid>
-    </Grid>
-  );
-
-  const TeamAssignmentStep = () => (
-    <Grid container spacing={3}>
-      <Grid item xs={12}>
-        <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
-          Team Assignment
-        </Typography>
-      </Grid>
-      <Grid item xs={12} md={6}>
-        <TextField
-          select
-          label="Responsible Attorney"
-          name="responsibleAttorney"
-          value={formData.responsibleAttorney}
-          onChange={handleChange}
-          fullWidth
-          required
-        >
-          {attorneys.map((option) => (
-            <MenuItem key={option} value={option}>
-              {option}
-            </MenuItem>
-          ))}
-        </TextField>
-      </Grid>
-      <Grid item xs={12} md={6}>
-        <Autocomplete
-          multiple
-          options={staffMembers}
-          value={formData.assignedStaff}
-          onChange={handleStaffChange}
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              label="Assigned Staff"
-              placeholder="Select team members"
-            />
-          )}
-        />
-      </Grid>
-    </Grid>
-  );
-
-  const BillingInformationStep = () => (
-    <Grid container spacing={3}>
-      <Grid item xs={12}>
-        <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
-          Billing Information
-        </Typography>
-      </Grid>
-      <Grid item xs={12}>
-        <FormControl component="fieldset">
-          <FormLabel component="legend">Billing Type</FormLabel>
-          <RadioGroup
-            row
-            name="billingType"
-            value={formData.billingType}
-            onChange={handleChange}
-          >
-            {billingTypes.map((option) => (
-              <FormControlLabel 
-                key={option} 
-                value={option} 
-                control={<Radio />} 
-                label={option} 
-              />
-            ))}
-          </RadioGroup>
-        </FormControl>
-      </Grid>
-      <Grid item xs={12} md={6}>
-        <TextField
-          label="Default Billing Rate"
-          name="billingRate"
-          value={formData.billingRate}
-          onChange={handleChange}
-          fullWidth
-          type="number"
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                $
-              </InputAdornment>
-            ),
-            endAdornment: formData.billingType === 'Hourly' ? (
-              <InputAdornment position="end">
-                /hour
-              </InputAdornment>
-            ) : null,
-          }}
-        />
-      </Grid>
-      <Grid item xs={12} md={6}>
-        <TextField
-          label="Retainer Amount"
-          name="retainerAmount"
-          value={formData.retainerAmount}
-          onChange={handleChange}
-          fullWidth
-          type="number"
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                $
-              </InputAdornment>
-            ),
-          }}
-        />
-      </Grid>
-    </Grid>
-  );
-
-  const AdditionalDetailsStep = () => (
-    <Grid container spacing={3}>
-      <Grid item xs={12}>
-        <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
-          Additional Details
-        </Typography>
-      </Grid>
-      <Grid item xs={12} md={6}>
-        <TextField
-          label="Court/Jurisdiction"
-          name="courtJurisdiction"
-          value={formData.courtJurisdiction}
-          onChange={handleChange}
-          fullWidth
-          placeholder="e.g., Southern District of New York"
-        />
-      </Grid>
-      <Grid item xs={12} md={6}>
-        <LocalizationProvider dateAdapter={AdapterDateFns}>
-          <DatePicker
-            label="Statute of Limitations"
-            value={formData.statuteOfLimitations}
-            onChange={(newValue) => handleDateChange('statuteOfLimitations', newValue)}
-            renderInput={(params) => <TextField {...params} fullWidth />}
-          />
-        </LocalizationProvider>
-      </Grid>
-      <Grid item xs={12}>
-        <Box sx={{ mt: 2, p: 2, bgcolor: 'rgba(239, 246, 255, 1)', borderRadius: '8px', display: 'flex', alignItems: 'flex-start' }}>
-          <InfoIcon sx={{ color: theme.palette.primary.main, mr: 1, mt: 0.5 }} />
-          <Box>
-            <Typography variant="subtitle2" fontWeight={600} color={theme.palette.primary.main}>
-              Initial Setup Complete
-            </Typography>
-            <Typography variant="body2">
-              After creating this matter, you'll be able to add tasks, documents, and notes.
-            </Typography>
-          </Box>
-        </Box>
-      </Grid>
-    </Grid>
-  );
-
-  // Determine which step to render
-  const getStepContent = (step) => {
-    switch (step) {
-      case 0:
-        return <BasicInformationStep />;
-      case 1:
-        return <ClientInformationStep />;
-      case 2:
-        return <TeamAssignmentStep />;
-      case 3:
-        return <BillingInformationStep />;
-      case 4:
-        return <AdditionalDetailsStep />;
-      default:
-        return 'Unknown step';
-    }
-  };
-
-  // Step icons
-  const getStepIcon = (step) => {
-    switch (step) {
-      case 0:
-        return <BusinessCenterIcon />;
-      case 1:
-        return <PersonIcon />;
-      case 2:
-        return <GroupIcon />;
-      case 3:
-        return <PaymentIcon />;
-      case 4:
-        return <DescriptionIcon />;
-      default:
-        return null;
-    }
+    
+    // Simulate API call
+    setTimeout(() => {
+      setLoading(false);
+      // If there's an onSubmit prop, call it
+      if (onSubmit) {
+        onSubmit(formData);
+      } else {
+        // Navigate back to matters list
+        navigate('/matters');
+      }
+    }, 1000);
   };
 
   return (
-    <Dialog 
-      open={open} 
-      onClose={onClose}
-      fullWidth
-      maxWidth="md"
-      PaperProps={{
-        sx: {
-          borderRadius: '8px',
-        }
-      }}
-    >
-      <DialogTitle>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Typography variant="h6" fontWeight={600}>
-            Create New Matter
-          </Typography>
-          <IconButton 
-            aria-label="close" 
-            onClick={onClose}
-            size="small"
-          >
-            <CloseIcon />
-          </IconButton>
-        </Box>
-      </DialogTitle>
-      <DialogContent dividers>
-        <Box sx={{ width: '100%', mb: 4 }}>
-          <Stepper activeStep={activeStep} alternativeLabel>
-            {steps.map((label, index) => (
-              <Step key={label}>
-                <StepLabel 
-                  StepIconComponent={() => (
-                    <Box 
-                      sx={{ 
-                        width: 40, 
-                        height: 40, 
-                        borderRadius: '50%', 
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: index === activeStep 
-                          ? theme.palette.primary.main 
-                          : index < activeStep 
-                            ? '#10B981' 
-                            : '#F3F4F6',
-                        color: index <= activeStep ? 'white' : '#64748B'
-                      }}
-                    >
-                      {index < activeStep 
-                        ? <CheckCircleIcon /> 
-                        : getStepIcon(index)
-                      }
-                    </Box>
-                  )}
-                >
-                  {label}
-                </StepLabel>
-              </Step>
-            ))}
-          </Stepper>
-        </Box>
-        <Box sx={{ mt: 2 }}>
-          {getStepContent(activeStep)}
-        </Box>
-      </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button
-          onClick={onClose}
-          variant="outlined"
-          sx={{ 
-            borderColor: '#E5E7EB',
-            color: 'text.primary',
-            borderRadius: '8px',
-            textTransform: 'none',
-            fontWeight: 500,
-            '&:hover': {
-              borderColor: theme.palette.primary.main,
-              backgroundColor: 'rgba(0, 105, 209, 0.04)'
-            }
-          }}
-        >
-          Cancel
-        </Button>
-        <Box sx={{ flex: '1 1 auto' }} />
-        <Button 
-          disabled={activeStep === 0}
-          onClick={handleBack}
-          variant="outlined"
-          sx={{ 
-            borderColor: '#E5E7EB',
-            color: 'text.primary',
-            borderRadius: '8px',
-            textTransform: 'none',
-            fontWeight: 500,
-            mr: 1,
-            '&:hover': {
-              borderColor: theme.palette.primary.main,
-              backgroundColor: 'rgba(0, 105, 209, 0.04)'
-            }
-          }}
-        >
-          Back
-        </Button>
-        {activeStep === steps.length - 1 ? (
-          <Button 
-            onClick={handleSubmit}
-            variant="contained"
-            sx={{ 
-              borderRadius: '8px',
-              textTransform: 'none',
-              fontWeight: 500
-            }}
-          >
-            Create Matter
-          </Button>
-        ) : (
-          <Button 
-            onClick={handleNext}
-            variant="contained"
-            sx={{ 
-              borderRadius: '8px',
-              textTransform: 'none',
-              fontWeight: 500
-            }}
-          >
-            Next
-          </Button>
-        )}
-      </DialogActions>
-    </Dialog>
+    <Paper elevation={2} sx={{ p: 3, borderRadius: 2 }}>
+      <form onSubmit={handleSubmit}>
+        <Grid container spacing={2}>
+          {submitError && (
+            <Grid item xs={12}>
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {submitError}
+              </Alert>
+            </Grid>
+          )}
+          
+          {/* Template Section */}
+          <Grid item xs={12}>
+            <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1 }}>
+              <DescriptionIcon sx={{ mr: 1, fontSize: 20, verticalAlign: 'text-bottom' }} />
+              Template Information
+            </Typography>
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <Autocomplete
+              options={templates}
+              value={formData.template}
+              onChange={handleTemplateChange}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Select Existing Template"
+                  fullWidth
+                  size="small"
+                />
+              )}
+            />
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <Button 
+              variant="outlined" 
+              fullWidth
+              size="small"
+              sx={{ 
+                py: 1.2, 
+                borderColor: '#E5E7EB',
+                color: 'text.primary',
+                '&:hover': {
+                  borderColor: theme.palette.primary.main,
+                  backgroundColor: 'rgba(0, 105, 209, 0.04)'
+                }
+              }}
+            >
+              Create New Template
+            </Button>
+          </Grid>
+          
+          <Grid item xs={12}>
+            <Divider sx={{ my: 1 }} />
+          </Grid>
+          
+          {/* Matter Information Section (renamed from Client Information) */}
+          <Grid item xs={12}>
+            <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1 }}>
+              <BusinessCenterIcon sx={{ mr: 1, fontSize: 20, verticalAlign: 'text-bottom' }} />
+              Matter Information
+            </Typography>
+          </Grid>
+          
+          <Grid item xs={12} container spacing={2} alignItems="center">
+            <Grid item xs={12} sm={7}>
+              <Autocomplete
+                options={clients}
+                getOptionLabel={(option) => option.name}
+                value={formData.client}
+                onChange={handleClientChange}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Select Client"
+                    required
+                    fullWidth
+                    size="small"
+                    error={!!errors.client}
+                    helperText={errors.client}
+                  />
+                )}
+              />
+            </Grid>
+            <Grid item xs={12} sm={1} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+                OR
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <Button 
+                variant="contained" 
+                fullWidth
+                size="small"
+                onClick={() => navigate('/clients/new')}
+                sx={{ 
+                  py: 1, 
+                  backgroundColor: theme.palette.primary.light,
+                  color: 'white',
+                  borderRadius: '4px',
+                  textTransform: 'none',
+                  fontWeight: 500,
+                  boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)',
+                  '&:hover': {
+                    backgroundColor: theme.palette.primary.main,
+                  }
+                }}
+              >
+                Create New Client
+              </Button>
+            </Grid>
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <TextField
+              label="Matter Name"
+              name="matterName"
+              value={formData.matterName}
+              onChange={handleChange}
+              fullWidth
+              required
+              placeholder="e.g., Johnson v. Smith"
+              size="small"
+              error={!!errors.matterName}
+              helperText={errors.matterName}
+            />
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <TextField
+              label="Matter Number"
+              name="matterNumber"
+              value={formData.matterNumber}
+              onChange={handleChange}
+              fullWidth
+              placeholder="e.g., LIT-2023-001 (Auto-generated if left blank)"
+              size="small"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    #
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <TextField
+              label="Client Reference Number"
+              name="clientReferenceNumber"
+              value={formData.clientReferenceNumber}
+              onChange={handleChange}
+              fullWidth
+              placeholder="Client's internal reference number"
+              size="small"
+            />
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <TextField
+              select
+              label="Location"
+              name="location"
+              value={formData.location}
+              onChange={handleChange}
+              fullWidth
+              size="small"
+            >
+              {locations.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <TextField
+              select
+              label="Practice Area"
+              name="practiceArea"
+              value={formData.practiceArea}
+              onChange={handleChange}
+              fullWidth
+              required
+              size="small"
+              error={!!errors.practiceArea}
+              helperText={errors.practiceArea}
+            >
+              {practiceAreas.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <TextField
+              select
+              label="Status"
+              name="status"
+              value={formData.status}
+              onChange={handleChange}
+              fullWidth
+              required
+              size="small"
+            >
+              {statuses.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <TextField
+              select
+              label="Matter Stage"
+              name="matterStage"
+              value={formData.matterStage}
+              onChange={handleChange}
+              fullWidth
+              size="small"
+            >
+              {matterStages.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <DatePicker
+                label="Open Date"
+                value={formData.openDate}
+                onChange={(newValue) => handleDateChange('openDate', newValue)}
+                slotProps={{ 
+                  textField: { 
+                    fullWidth: true,
+                    size: "small",
+                    required: true 
+                  }
+                }}
+              />
+            </LocalizationProvider>
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <DatePicker
+                label="Closed Date"
+                value={formData.closedDate}
+                onChange={(newValue) => handleDateChange('closedDate', newValue)}
+                slotProps={{ 
+                  textField: { 
+                    fullWidth: true,
+                    size: "small"
+                  }
+                }}
+              />
+            </LocalizationProvider>
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <DatePicker
+                label="Pending Date"
+                value={formData.pendingDate}
+                onChange={(newValue) => handleDateChange('pendingDate', newValue)}
+                slotProps={{ 
+                  textField: { 
+                    fullWidth: true,
+                    size: "small"
+                  }
+                }}
+              />
+            </LocalizationProvider>
+          </Grid>
+          
+          <Grid item xs={12}>
+            <TextField
+              label="Matter Description"
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              fullWidth
+              multiline
+              rows={4}
+              placeholder="Enter a brief description of the matter..."
+              size="small"
+            />
+          </Grid>
+          
+          <Grid item xs={12}>
+            <Divider sx={{ my: 1 }} />
+          </Grid>
+          
+          {/* Team Assignment Section */}
+          <Grid item xs={12}>
+            <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1 }}>
+              <GroupIcon sx={{ mr: 1, fontSize: 20, verticalAlign: 'text-bottom' }} />
+              Team Assignment
+            </Typography>
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <TextField
+              select
+              label="Responsible Attorney"
+              name="responsibleAttorney"
+              value={formData.responsibleAttorney}
+              onChange={handleChange}
+              fullWidth
+              required
+              size="small"
+              error={!!errors.responsibleAttorney}
+              helperText={errors.responsibleAttorney}
+            >
+              {attorneys.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <TextField
+              select
+              label="Referring Attorney"
+              name="referringAttorney"
+              value={formData.referringAttorney}
+              onChange={handleChange}
+              fullWidth
+              size="small"
+            >
+              {attorneys.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          
+          <Grid item xs={12}>
+            <Divider sx={{ my: 1 }} />
+          </Grid>
+          
+          {/* Billing Information Section */}
+          <Grid item xs={12}>
+            <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1 }}>
+              <PaymentIcon sx={{ mr: 1, fontSize: 20, verticalAlign: 'text-bottom' }} />
+              Billing Information
+            </Typography>
+          </Grid>
+          
+          <Grid item xs={12} sm={4}>
+            <TextField
+              select
+              label="Billing Type"
+              name="billingType"
+              value={formData.billingType}
+              onChange={handleChange}
+              fullWidth
+              required
+              size="small"
+            >
+              {billingTypes.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          
+          <Grid item xs={12} sm={4}>
+            <TextField
+              label="Billing Rate"
+              name="billingRate"
+              value={formData.billingRate}
+              onChange={handleChange}
+              fullWidth
+              size="small"
+              error={!!errors.billingRate}
+              helperText={errors.billingRate}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    $
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Grid>
+          
+          <Grid item xs={12} sm={4}>
+            <TextField
+              label="Retainer Amount"
+              name="retainerAmount"
+              value={formData.retainerAmount}
+              onChange={handleChange}
+              fullWidth
+              size="small"
+              error={!!errors.retainerAmount}
+              helperText={errors.retainerAmount}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    $
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Grid>
+          
+          <Grid item xs={12}>
+            <Divider sx={{ my: 1 }} />
+          </Grid>
+          
+          {/* Additional Details Section */}
+          <Grid item xs={12}>
+            <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1 }}>
+              <InfoIcon sx={{ mr: 1, fontSize: 20, verticalAlign: 'text-bottom' }} />
+              Additional Details
+            </Typography>
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <TextField
+              label="Court/Jurisdiction"
+              name="courtJurisdiction"
+              value={formData.courtJurisdiction}
+              onChange={handleChange}
+              fullWidth
+              size="small"
+            />
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <DatePicker
+                label="Statute of Limitations"
+                value={formData.statuteOfLimitations}
+                onChange={(newValue) => handleDateChange('statuteOfLimitations', newValue)}
+                slotProps={{ 
+                  textField: { 
+                    fullWidth: true,
+                    size: "small"
+                  }
+                }}
+              />
+            </LocalizationProvider>
+          </Grid>
+          
+          <Grid item xs={12}>
+            <Box sx={{ p: 2, bgcolor: 'rgba(254, 249, 195, 0.5)', borderRadius: '4px', display: 'flex', alignItems: 'flex-start', mt: 1 }}>
+              <InfoIcon sx={{ color: '#FBBF24', mr: 1, mt: 0.5 }} />
+              <Box>
+                <Typography variant="subtitle2" fontWeight={600} color="#92400E">
+                  Matter Creation Reminder
+                </Typography>
+                <Typography variant="body2">
+                  After creating this matter, remember to upload relevant documents and set up initial tasks to get started.
+                </Typography>
+              </Box>
+            </Box>
+          </Grid>
+          
+          {/* Form Actions */}
+          <Grid item xs={12} sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+            <Button
+              onClick={handleCancel}
+              variant="outlined"
+              sx={{ 
+                mr: 2,
+                borderColor: '#E5E7EB',
+                color: 'text.primary',
+                borderRadius: '6px',
+                textTransform: 'none',
+                fontWeight: 500,
+                '&:hover': {
+                  borderColor: theme.palette.primary.main,
+                  backgroundColor: 'rgba(0, 105, 209, 0.04)'
+                }
+              }}
+            >
+              Cancel
+            </Button>
+            
+            <Button 
+              type="submit"
+              variant="contained"
+              disabled={loading}
+              sx={{ 
+                borderRadius: '6px',
+                textTransform: 'none',
+                fontWeight: 500
+              }}
+            >
+              {loading ? 'Creating...' : 'Create Matter'}
+            </Button>
+          </Grid>
+        </Grid>
+      </form>
+    </Paper>
   );
 };
 

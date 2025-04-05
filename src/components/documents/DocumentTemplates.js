@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, forwardRef, useImperativeHandle } from 'react';
 import {
   Box,
   Grid,
@@ -117,7 +117,7 @@ const sampleTemplates = [
   }
 ];
 
-const DocumentTemplates = () => {
+const DocumentTemplates = forwardRef((props, ref) => {
   const theme = useTheme();
   const [templates, setTemplates] = useState(sampleTemplates);
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -131,6 +131,19 @@ const DocumentTemplates = () => {
     tags: ''
   });
   const [previewDialog, setPreviewDialog] = useState(false);
+
+  // Expose methods to parent component
+  useImperativeHandle(ref, () => ({
+    handleNewTemplate: () => {
+      setTemplateFormData({
+        title: '',
+        description: '',
+        category: '',
+        tags: ''
+      });
+      setNewTemplateDialog(true);
+    }
+  }));
 
   const handleCategoryChange = (event, newValue) => {
     setSelectedCategory(newValue);
@@ -201,57 +214,37 @@ const DocumentTemplates = () => {
       .map(tag => tag.trim())
       .filter(tag => tag);
 
+    const newTemplate = {
+      id: selectedTemplate ? selectedTemplate.id : templates.length + 1,
+      title: templateFormData.title,
+      description: templateFormData.description,
+      category: templateFormData.category || 'contracts',
+      tags: tagsArray,
+      lastModified: new Date().toISOString().split('T')[0],
+      author: 'John Doe', // Would come from user session in a real app
+      starred: selectedTemplate ? selectedTemplate.starred : false,
+      usageCount: selectedTemplate ? selectedTemplate.usageCount : 0
+    };
+
     if (selectedTemplate) {
-      // Edit existing template
       setTemplates(templates.map(template => 
-        template.id === selectedTemplate.id
-          ? {
-              ...template,
-              title: templateFormData.title,
-              description: templateFormData.description,
-              category: templateFormData.category,
-              tags: tagsArray,
-              lastModified: new Date().toISOString().split('T')[0]
-            }
-          : template
+        template.id === selectedTemplate.id ? newTemplate : template
       ));
     } else {
-      // Add new template
-      const newTemplate = {
-        id: templates.length + 1,
-        title: templateFormData.title,
-        description: templateFormData.description,
-        category: templateFormData.category,
-        tags: tagsArray,
-        lastModified: new Date().toISOString().split('T')[0],
-        author: 'Current User',
-        starred: false,
-        usageCount: 0
-      };
       setTemplates([...templates, newTemplate]);
     }
-    
+
     setNewTemplateDialog(false);
     setSelectedTemplate(null);
   };
 
+  // Filter templates based on selected category
   const filteredTemplates = selectedCategory === 'all'
     ? templates
     : templates.filter(template => template.category === selectedCategory);
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h6">Document Templates Library</Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleNewTemplate}
-        >
-          New Template
-        </Button>
-      </Box>
-
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
         <Tabs
           value={selectedCategory}
@@ -286,7 +279,7 @@ const DocumentTemplates = () => {
                 display: 'flex', 
                 flexDirection: 'column',
                 border: `1px solid ${theme.palette.divider}`,
-                borderRadius: '8px',
+                borderRadius: '6px',
                 transition: 'all 0.2s',
                 '&:hover': {
                   boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
@@ -461,12 +454,15 @@ const DocumentTemplates = () => {
               fullWidth
               value={templateFormData.category}
               onChange={(e) => handleFormChange('category', e.target.value)}
-              required
+              SelectProps={{
+                native: true,
+              }}
             >
-              {templateCategories.filter(cat => cat.id !== 'all').map((category) => (
-                <MenuItem key={category.id} value={category.id}>
+              <option value="" disabled>Select a category</option>
+              {templateCategories.filter(c => c.id !== 'all').map((category) => (
+                <option key={category.id} value={category.id}>
                   {category.label}
-                </MenuItem>
+                </option>
               ))}
             </TextField>
             
@@ -475,20 +471,19 @@ const DocumentTemplates = () => {
               fullWidth
               value={templateFormData.tags}
               onChange={(e) => handleFormChange('tags', e.target.value)}
-              helperText="E.g. Contract, NDA, Legal"
+              placeholder="e.g. contract, legal, employment"
+              helperText="Enter tags separated by commas"
             />
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setNewTemplateDialog(false)}>
-            Cancel
-          </Button>
+          <Button onClick={() => setNewTemplateDialog(false)}>Cancel</Button>
           <Button 
-            variant="contained" 
-            onClick={handleSaveTemplate}
-            disabled={!templateFormData.title || !templateFormData.category}
+            onClick={handleSaveTemplate} 
+            variant="contained"
+            disabled={!templateFormData.title}
           >
-            {selectedTemplate ? 'Update Template' : 'Create Template'}
+            {selectedTemplate ? 'Update' : 'Create'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -501,73 +496,44 @@ const DocumentTemplates = () => {
         fullWidth
       >
         <DialogTitle>
-          {selectedTemplate?.title}
-          <IconButton
-            aria-label="close"
-            onClick={() => setPreviewDialog(false)}
-            sx={{
-              position: 'absolute',
-              right: 8,
-              top: 8
-            }}
-          >
-            <DeleteIcon />
-          </IconButton>
+          Template Preview
+          {selectedTemplate && `: ${selectedTemplate.title}`}
         </DialogTitle>
         <DialogContent dividers>
-          <Box sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 1, mb: 3 }}>
-            <Typography variant="subtitle2" gutterBottom>Template Information</Typography>
-            <Typography variant="body2" paragraph>
-              <strong>Category:</strong> {selectedTemplate?.category}
-            </Typography>
-            <Typography variant="body2" paragraph>
-              <strong>Author:</strong> {selectedTemplate?.author}
-            </Typography>
-            <Typography variant="body2" paragraph>
-              <strong>Last Modified:</strong> {selectedTemplate?.lastModified}
-            </Typography>
-            <Typography variant="body2">
-              <strong>Description:</strong> {selectedTemplate?.description}
-            </Typography>
-          </Box>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            This is a preview of the template. In a real application, this would display the actual document content.
+          </Typography>
           
-          <Typography variant="subtitle1" gutterBottom>Template Preview</Typography>
           <Box sx={{ 
             p: 3, 
-            border: `1px solid ${theme.palette.divider}`, 
-            borderRadius: 1,
-            minHeight: 300,
-            bgcolor: '#fff'
+            bgcolor: 'background.default', 
+            border: `1px solid ${theme.palette.divider}`,
+            borderRadius: '4px',
+            height: 400,
+            overflowY: 'auto'
           }}>
-            {/* This would be the actual template content in a real app */}
-            <Typography variant="h6" gutterBottom>
-              {selectedTemplate?.title}
+            <Typography variant="h6" gutterBottom>Sample Document Content</Typography>
+            <Typography paragraph>
+              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam in dui mauris. Vivamus hendrerit arcu sed erat molestie vehicula. Sed auctor neque eu tellus rhoncus ut eleifend nibh porttitor.
             </Typography>
             <Typography paragraph>
-              This is a preview of the {selectedTemplate?.title} template. In a real application, this would display the actual template content with placeholders for customizable fields.
+              Ut in nulla enim. Phasellus molestie magna non est bibendum non venenatis nisl tempor. Suspendisse dictum feugiat nisl ut dapibus. Mauris iaculis porttitor posuere. Praesent id metus massa, ut blandit odio.
             </Typography>
             <Typography paragraph>
-              The template would include standard legal language, formatting, and sections relevant to this type of document.
-            </Typography>
-            <Typography>
-              Users would be able to customize specific fields, add clauses from a clause library, and generate a final document based on this template.
+              Proin quis tortor orci. Etiam at risus et justo dignissim congue. Donec congue lacinia dui, a porttitor lectus condimentum laoreet. Nunc eu ullamcorper orci. Quisque eget odio ac lectus vestibulum faucibus eget in metus.
             </Typography>
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setPreviewDialog(false)}>
-            Cancel
-          </Button>
-          <Button variant="outlined" startIcon={<DownloadIcon />}>
-            Download
-          </Button>
-          <Button variant="contained" startIcon={<FileCopyIcon />}>
-            Use Template
-          </Button>
+          <Button onClick={() => setPreviewDialog(false)}>Close</Button>
+          <Button variant="contained">Use This Template</Button>
         </DialogActions>
       </Dialog>
     </Box>
   );
-};
+});
+
+// Ensure proper display name for debugging
+DocumentTemplates.displayName = 'DocumentTemplates';
 
 export default DocumentTemplates; 

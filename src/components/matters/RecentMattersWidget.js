@@ -69,7 +69,7 @@ const RecentMattersWidget = () => {
   };
 
   return (
-    <Paper sx={{ height: '100%', borderRadius: '8px', boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.05)', overflow: 'hidden' }}>
+    <Paper sx={{ height: '100%', borderRadius: '6px', boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.05)', overflow: 'hidden' }}>
       <Box sx={{ p: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #F3F4F6' }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <BusinessCenterIcon sx={{ color: theme.palette.primary.main, mr: 1 }} />
@@ -120,7 +120,7 @@ const RecentMattersWidget = () => {
                       backgroundColor: `${getStatusColor(matter.status)}20`, // 20% opacity
                       color: getStatusColor(matter.status),
                       fontWeight: 500,
-                      borderRadius: '4px'
+                      borderRadius: '6px'
                     }} 
                   />
                 </Box>

@@ -17,6 +17,9 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+// Serve files from the uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -116,6 +119,60 @@ app.delete('/api/documents/:id', (req, res) => {
   }
   
   res.json({ message: 'Document deleted successfully' });
+});
+
+// Document Preview Endpoint
+app.get('/api/documents/:id/preview', (req, res) => {
+  const { id } = req.params;
+  const document = documents.find(doc => doc.id === id);
+  
+  if (!document) {
+    return res.status(404).json({ error: 'Document not found' });
+  }
+  
+  // Check if file exists
+  if (!document.path || !fs.existsSync(document.path)) {
+    return res.status(404).json({ error: 'Document file not found' });
+  }
+  
+  // Determine file type for proper content type setting
+  const fileExtension = path.extname(document.path).toLowerCase();
+  let contentType;
+  
+  switch (fileExtension) {
+    case '.pdf':
+      contentType = 'application/pdf';
+      break;
+    case '.jpg':
+    case '.jpeg':
+      contentType = 'image/jpeg';
+      break;
+    case '.png':
+      contentType = 'image/png';
+      break;
+    case '.gif':
+      contentType = 'image/gif';
+      break;
+    case '.txt':
+      contentType = 'text/plain';
+      break;
+    case '.doc':
+      contentType = 'application/msword';
+      break;
+    case '.docx':
+      contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      break;
+    default:
+      contentType = 'application/octet-stream';
+  }
+  
+  // Set headers and return file
+  res.setHeader('Content-Type', contentType);
+  res.setHeader('Content-Disposition', `inline; filename="${document.name}"`);
+  
+  // Create read stream and pipe to response
+  const fileStream = fs.createReadStream(document.path);
+  fileStream.pipe(res);
 });
 
 // AI Endpoints

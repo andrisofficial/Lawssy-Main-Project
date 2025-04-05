@@ -21,7 +21,7 @@ const MainLayout = ({ children, title }) => {
       margin: 0,
       padding: 0
     }}>
-      <Header title={title} />
+      <Header />
       <Sidebar />
       <Box
         component="main"

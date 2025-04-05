@@ -140,7 +140,7 @@ const DocumentAnalytics = () => {
                 height: `${(item[dataKey] / maxValue) * 180}px`, 
                 width: '70%', 
                 bgcolor: colors[index % colors.length],
-                borderRadius: '4px 4px 0 0',
+                borderRadius: '6px 6px 0 0',
                 transition: 'height 0.3s ease',
                 '&:hover': {
                   opacity: 0.8
@@ -345,7 +345,7 @@ const DocumentAnalytics = () => {
               sx={{ 
                 height: '100%',
                 border: `1px solid ${theme.palette.divider}`,
-                borderRadius: '8px'
+                borderRadius: '6px'
               }}
             >
               <CardContent>
@@ -387,7 +387,7 @@ const DocumentAnalytics = () => {
               p: 3, 
               height: '100%',
               border: `1px solid ${theme.palette.divider}`,
-              borderRadius: '8px'
+              borderRadius: '6px'
             }}
           >
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -409,7 +409,7 @@ const DocumentAnalytics = () => {
               p: 3, 
               height: '100%',
               border: `1px solid ${theme.palette.divider}`,
-              borderRadius: '8px'
+              borderRadius: '6px'
             }}
           >
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -432,7 +432,7 @@ const DocumentAnalytics = () => {
         sx={{ 
           p: 3,
           border: `1px solid ${theme.palette.divider}`,
-          borderRadius: '8px'
+          borderRadius: '6px'
         }}
       >
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>

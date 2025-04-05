@@ -15,7 +15,17 @@ const clientService = {
       .from('clients')
       .select(`
         *,
-        status:client_statuses(id, name, color)
+        status:client_statuses(id, name, color),
+        matters:client_case_associations(
+          id,
+          case_id,
+          case:cases(id, case_number, title, status_id, case_status:status_id(id, name))
+        ),
+        assigned_personnel:client_personnel_assignments(
+          id, 
+          personnel_id,
+          personnel:personnel_id(id, first_name, last_name)
+        )
       `);
     
     // Apply filters
@@ -36,6 +46,7 @@ const clientService = {
       query = query.or(`first_name.ilike.${searchTerm},last_name.ilike.${searchTerm},organization_name.ilike.${searchTerm},primary_email.ilike.${searchTerm},primary_phone.ilike.${searchTerm}`);
     }
     
+    // Get data with all relations
     const { data, error } = await query.order('created_at', { ascending: false });
     
     if (error) {
@@ -43,7 +54,126 @@ const clientService = {
       throw new Error(`Error fetching clients: ${error.message}`);
     }
     
-    return data;
+    // Apply filters that need post-processing
+    let filteredData = [...data];
+    
+    // Filter by assigned personnel if specified
+    if (filters.assignedPersonnel && filteredData.length > 0) {
+      filteredData = filteredData.filter(client => {
+        if (!client.assigned_personnel || !Array.isArray(client.assigned_personnel)) {
+          return false;
+        }
+        return client.assigned_personnel.some(
+          assignment => assignment.personnel_id.toString() === filters.assignedPersonnel.toString()
+        );
+      });
+    }
+    
+    // Filter by practice area if specified
+    if (filters.practiceArea && filteredData.length > 0) {
+      filteredData = filteredData.filter(client => {
+        if (!client.matters || !Array.isArray(client.matters)) {
+          return false;
+        }
+        return client.matters.some(
+          matter => matter.case && matter.case.practice_area === filters.practiceArea
+        );
+      });
+    }
+    
+    // Filter by open matters if specified
+    if (filters.openMatters && filteredData.length > 0) {
+      filteredData = filteredData.filter(client => {
+        if (!client.matters || !Array.isArray(client.matters)) {
+          return filters.openMatters === 'no';
+        }
+        
+        // Count active/open matters
+        const openMatters = client.matters.filter(
+          matter => matter.case && matter.case.case_status && 
+                    matter.case.case_status.name !== 'Closed' && 
+                    matter.case.case_status.name !== 'Archived'
+        ).length;
+        
+        switch (filters.openMatters) {
+          case 'yes':
+            return openMatters > 0;
+          case 'no':
+            return openMatters === 0;
+          case '1-5':
+            return openMatters >= 1 && openMatters <= 5;
+          case '6-10':
+            return openMatters >= 6 && openMatters <= 10;
+          case '10+':
+            return openMatters > 10;
+          default:
+            return true;
+        }
+      });
+    }
+    
+    // Filter by date added range if specified
+    if ((filters.dateAdded?.start || filters.dateAdded?.end) && filteredData.length > 0) {
+      filteredData = filteredData.filter(client => {
+        const createdDate = new Date(client.created_at);
+        
+        // Check start date if specified
+        if (filters.dateAdded.start) {
+          const startDate = new Date(filters.dateAdded.start);
+          if (createdDate < startDate) return false;
+        }
+        
+        // Check end date if specified
+        if (filters.dateAdded.end) {
+          const endDate = new Date(filters.dateAdded.end);
+          // Set end date to end of day
+          endDate.setHours(23, 59, 59, 999);
+          if (createdDate > endDate) return false;
+        }
+        
+        return true;
+      });
+    }
+    
+    // Filter by last activity range if specified
+    if ((filters.lastActivity?.start || filters.lastActivity?.end) && filteredData.length > 0) {
+      filteredData = filteredData.filter(client => {
+        const lastActivity = client.last_activity_date ? new Date(client.last_activity_date) : new Date(client.updated_at);
+        
+        // Check start date if specified
+        if (filters.lastActivity.start) {
+          const startDate = new Date(filters.lastActivity.start);
+          if (lastActivity < startDate) return false;
+        }
+        
+        // Check end date if specified
+        if (filters.lastActivity.end) {
+          const endDate = new Date(filters.lastActivity.end);
+          // Set end date to end of day
+          endDate.setHours(23, 59, 59, 999);
+          if (lastActivity > endDate) return false;
+        }
+        
+        return true;
+      });
+    }
+    
+    // Filter by company if specified
+    if (filters.company && filteredData.length > 0) {
+      filteredData = filteredData.filter(client => {
+        // For individual clients, check their company association
+        if (client.client_type === 'Individual') {
+          return client.company_id && client.company_id.toString() === filters.company.toString();
+        }
+        // For organization clients, check their ID directly
+        else if (client.client_type === 'Organization') {
+          return client.id.toString() === filters.company.toString();
+        }
+        return false;
+      });
+    }
+    
+    return filteredData;
   },
   
   /**

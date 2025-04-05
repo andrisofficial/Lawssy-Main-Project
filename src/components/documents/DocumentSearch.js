@@ -201,7 +201,7 @@ const DocumentSearch = () => {
               </InputAdornment>
             ),
             sx: {
-              borderRadius: '8px',
+              borderRadius: '6px',
               bgcolor: 'background.paper'
             }
           }}
@@ -272,7 +272,7 @@ const DocumentSearch = () => {
             p: 3,
             mt: 1,
             boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-            borderRadius: '8px'
+            borderRadius: '6px'
           }
         }}
       >

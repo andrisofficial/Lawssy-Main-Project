@@ -83,7 +83,7 @@ const MatterDetailHeader = ({ matter }) => {
               label={`Client: ${matter.client}`} 
               sx={{ 
                 bgcolor: 'rgba(31, 41, 55, 0.1)', 
-                borderRadius: '4px',
+                borderRadius: '6px',
                 height: 28
               }} 
             />
@@ -91,7 +91,7 @@ const MatterDetailHeader = ({ matter }) => {
               label={`#${matter.id}`} 
               sx={{ 
                 bgcolor: 'rgba(31, 41, 55, 0.1)', 
-                borderRadius: '4px',
+                borderRadius: '6px',
                 height: 28
               }} 
             />
@@ -101,7 +101,7 @@ const MatterDetailHeader = ({ matter }) => {
                 bgcolor: `${getStatusColor(matter.status)}20`,
                 color: getStatusColor(matter.status),
                 fontWeight: 500,
-                borderRadius: '4px',
+                borderRadius: '6px',
                 height: 28
               }} 
             />
@@ -110,7 +110,7 @@ const MatterDetailHeader = ({ matter }) => {
               sx={{ 
                 bgcolor: 'rgba(0, 105, 209, 0.1)', 
                 color: theme.palette.primary.main,
-                borderRadius: '4px',
+                borderRadius: '6px',
                 height: 28
               }} 
             />
@@ -123,7 +123,7 @@ const MatterDetailHeader = ({ matter }) => {
             startIcon={<EditIcon />}
             sx={{ 
               mr: 1,
-              borderRadius: '8px',
+              borderRadius: '6px',
               borderColor: '#E5E7EB',
               color: 'text.primary',
               textTransform: 'none',

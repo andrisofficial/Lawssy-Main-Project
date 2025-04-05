@@ -12,10 +12,12 @@ import DocumentManagementPage from './pages/DocumentManagementPage';
 import CalendarPage from './pages/CalendarPage';
 import MatterManagementPage from './pages/MatterManagementPage';
 import MatterDetailPage from './pages/MatterDetailPage';
+import CreateMatterPage from './pages/matters/CreateMatterPage';
 import ClientsPage from './pages/clients/ClientsPage';
 import ClientDetailPage from './pages/clients/ClientDetailPage';
 import CreateClientPage from './pages/clients/CreateClientPage';
 import EditClientPage from './pages/clients/EditClientPage';
+import DocumentPreview from './components/documents/DocumentPreview';
 
 // Case management
 import CasesPage from './pages/cases/CasesPage';
@@ -40,8 +42,10 @@ function App() {
                 <Route path="/time-tracking" element={<TimeTrackingPage />} />
                 <Route path="/billing" element={<BillingPage />} />
                 <Route path="/documents" element={<DocumentManagementPage />} />
+                <Route path="/documents/:documentId/preview" element={<DocumentPreview />} />
                 <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/matters" element={<MatterManagementPage />} />
+                <Route path="/matters/new" element={<CreateMatterPage />} />
                 <Route path="/matters/:id" element={<MatterDetailPage />} />
                 
                 {/* Client Routes */}

@@ -51,7 +51,7 @@ const MatterTabs = ({ matter }) => {
       <Typography variant="h6" fontWeight={600} gutterBottom>
         Overview
       </Typography>
-      <Paper sx={{ p: 3, borderRadius: '8px', boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.05)' }}>
+      <Paper sx={{ p: 3, borderRadius: '6px', boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.05)' }}>
         <Typography variant="body1">
           <strong>Matter Name:</strong> {matter.name}
         </Typography>
@@ -135,7 +135,7 @@ const MatterTabs = ({ matter }) => {
       <Typography variant="h6" fontWeight={600} gutterBottom>
         Client
       </Typography>
-      <Paper sx={{ p: 3, borderRadius: '8px', boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.05)' }}>
+      <Paper sx={{ p: 3, borderRadius: '6px', boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.05)' }}>
         <Typography variant="body1">
           <strong>Client Name:</strong> {matter.client}
         </Typography>
@@ -275,7 +275,7 @@ const MatterTabs = ({ matter }) => {
                 color: theme.palette.primary.main,
               }
             }} 
-          />
+          />        
         </Tabs>
       </Box>
       <TabPanel value={value} index={0}>

@@ -151,7 +151,7 @@ const QuickTimer = ({ clients = [], matters = [], practiceAreas = [], activityTy
           startIcon={isRunning ? <PauseIcon /> : <PlayArrowIcon />}
           onClick={isRunning ? handlePause : handleStart}
           sx={{ 
-            borderRadius: '8px',
+            borderRadius: '6px',
             padding: '8px 16px',
             fontSize: '14px',
             height: '40px'
